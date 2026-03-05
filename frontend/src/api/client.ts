@@ -1,6 +1,8 @@
 import type { TailorResponse, DownloadRequest } from "../types";
 
-const BASE = "/api";
+// In dev, Vite proxies /api → localhost:8001.
+// In production, VITE_API_BASE_URL points directly to the Render backend.
+const BASE = (import.meta.env.VITE_API_BASE_URL ?? "") + "/api";
 
 export async function tailorResume(
   resumeFile: File,
