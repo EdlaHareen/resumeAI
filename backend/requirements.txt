@@ -9,4 +9,3 @@ openai==1.50.0
 python-dotenv==1.0.0
 pydantic==2.11.3
 slowapi==0.1.9
-mangum==0.17.0
