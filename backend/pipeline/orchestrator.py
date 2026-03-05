@@ -1,8 +1,6 @@
 import asyncio
-import time
 import uuid
-import threading
-from typing import Dict, Any, List
+from typing import Any, List, Dict
 
 from api.models.responses import TailorResponse, EdgeCase, JDAnalysis
 from pipeline.stage1_parse import parse_resume
@@ -11,32 +9,17 @@ from pipeline.stage3_rewrite import rewrite_bullets
 from pipeline.stage4_validate import validate_rewrites
 from utils.diff import build_diff
 from utils.scoring import compute_scores
+from pipeline.session_store import get_store, SESSION_TTL_SECONDS
 
-# In-memory session store: session_id -> {data, expires_at}
-_sessions: Dict[str, Dict[str, Any]] = {}
-_lock = threading.Lock()
-SESSION_TTL = 600  # 10 minutes
-
-
-def _evict_expired():
-    now = time.time()
-    expired = [sid for sid, s in _sessions.items() if s["expires_at"] < now]
-    for sid in expired:
-        del _sessions[sid]
+_store = get_store()
 
 
 def get_session(session_id: str) -> Dict[str, Any]:
-    with _lock:
-        _evict_expired()
-        session = _sessions.get(session_id)
-        if session is None:
-            raise KeyError(f"Session {session_id} not found or expired")
-        return session["data"]
+    return _store.get(session_id)
 
 
 def delete_session(session_id: str):
-    with _lock:
-        _sessions.pop(session_id, None)
+    _store.delete(session_id)
 
 
 def _detect_edge_cases(resume_structured: dict, jd_text: str) -> List[EdgeCase]:
@@ -118,17 +101,17 @@ def _run_pipeline_sync(resume_text: str, jd_text: str) -> TailorResponse:
         changed_bullets=len(diff),
     )
 
-    with _lock:
-        _evict_expired()
-        _sessions[session_id] = {
-            "data": {
-                "resume_structured": resume_structured,
-                "resume_text": resume_text,
-                "rewrites": rewrites,
-                "response": response,
-            },
-            "expires_at": time.time() + SESSION_TTL,
-        }
+    _store.set(
+        session_id,
+        {
+            "resume_structured": resume_structured,
+            "resume_text": resume_text,
+            "rewrites": rewrites,
+            # Store a JSON-safe copy in case a persistent store is used.
+            "response": response.model_dump(),
+        },
+        ttl_seconds=SESSION_TTL_SECONDS,
+    )
 
     return response
 
