@@ -63,7 +63,7 @@ def _add_section_header(doc: Document, title: str):
 
 
 def _add_two_column_line(doc: Document, left: str, right: str, left_bold=False, left_italic=False):
-    """Add a paragraph with left text and right-aligned text (simulating \hfill)."""
+    r"""Add a paragraph with left text and right-aligned text (simulating \hfill)."""
     p = doc.add_paragraph()
     p.paragraph_format.space_before = Pt(0)
     p.paragraph_format.space_after = Pt(1)

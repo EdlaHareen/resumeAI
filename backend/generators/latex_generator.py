@@ -43,7 +43,7 @@ def _esc(text: str) -> str:
 
 
 def _esc_url(url: str) -> str:
-    """Minimal escaping for URLs inside \href{}."""
+    r"""Minimal escaping for URLs inside \href{}."""
     return url.replace("%", r"\%")
 
 
