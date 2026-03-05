@@ -18,8 +18,8 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [processingStage, setProcessingStage] = useState(1);
   const [result, setResult] = useState<TailorResponse | null>(null);
-  const [currentFile, setCurrentFile] = useState<File | null>(null);
-  const [currentJd, setCurrentJd] = useState<string>("");
+  const [_currentFile, setCurrentFile] = useState<File | null>(null);
+  const [_currentJd, setCurrentJd] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
