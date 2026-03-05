@@ -31,9 +31,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(health_router)
-app.include_router(tailor_router)
-app.include_router(download_router)
+app.include_router(health_router, prefix="/api")
+app.include_router(tailor_router, prefix="/api")
+app.include_router(download_router, prefix="/api")
 
 
 # Apply rate limit to /tailor
