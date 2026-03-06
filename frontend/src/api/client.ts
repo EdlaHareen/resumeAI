@@ -30,9 +30,14 @@ export async function tailorResume(
   }
 
   if (!resp.ok) {
+    if (resp.status === 504) {
+      throw new Error(
+        "The request timed out. If this is your first request, the server may be waking up — please try again in a moment."
+      );
+    }
     const err = await resp.json().catch(() => ({ detail: "Unknown error" }));
     const detail = err.detail;
-    if (typeof detail === "object" && detail.message) {
+    if (typeof detail === "object" && detail?.message) {
       throw new Error(detail.message);
     }
     throw new Error(typeof detail === "string" ? detail : "Request failed");

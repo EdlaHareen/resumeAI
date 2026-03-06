@@ -89,10 +89,15 @@ export default function App() {
     setProcessingStage(1);
   }
 
+  /** Clicking ResumeAI logo from any page goes to dashboard (or upload if not signed in). */
+  function handleLogoClick() {
+    setStep(user ? "dashboard" : "upload");
+  }
+
   function renderPage() {
     switch (step) {
       case "landing":
-        return <LandingPage onGetStarted={handleGetStarted} />;
+        return <LandingPage onGetStarted={handleGetStarted} onLogoClick={handleLogoClick} />;
 
       case "dashboard":
         return user ? (
@@ -100,6 +105,7 @@ export default function App() {
             user={user}
             onNewResume={() => setStep("upload")}
             onSignOut={handleSignOut}
+            onLogoClick={handleLogoClick}
           />
         ) : null;
 
@@ -113,6 +119,7 @@ export default function App() {
             user={user}
             onDashboard={() => setStep("dashboard")}
             onSignOut={handleSignOut}
+            onLogoClick={handleLogoClick}
           />
         );
 
@@ -127,6 +134,7 @@ export default function App() {
             user={user}
             onDashboard={() => setStep("dashboard")}
             onSignOut={handleSignOut}
+            onLogoClick={handleLogoClick}
           />
         ) : null;
 
@@ -137,8 +145,11 @@ export default function App() {
             user={user}
             onDashboard={() => setStep("dashboard")}
             onSignOut={handleSignOut}
+            onLogoClick={handleLogoClick}
           />
         );
+      default:
+        return <LandingPage onGetStarted={handleGetStarted} onLogoClick={handleLogoClick} />;
     }
   }
 

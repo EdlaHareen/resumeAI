@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 
 interface Props {
   onGetStarted: () => void;
+  onLogoClick: () => void;
 }
 
 // ── Design tokens ────────────────────────────────────────────────────────────
@@ -32,15 +33,23 @@ const GRID_BG: React.CSSProperties = {
 };
 
 // ── Nav ──────────────────────────────────────────────────────────────────────
-function Nav({ onGetStarted }: { onGetStarted: () => void }) {
+function Nav({ onGetStarted, onLogoClick }: { onGetStarted: () => void; onLogoClick: () => void }) {
   return (
     <header style={{
       position: "absolute", top: 0, left: 0, right: 0, zIndex: 50,
       padding: "1.5rem 2.5rem",
       display: "flex", alignItems: "center", justifyContent: "space-between",
     }}>
-      {/* Logo */}
-      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+      {/* Logo — click goes to dashboard (or upload if not signed in) */}
+      <button
+        type="button"
+        onClick={onLogoClick}
+        style={{
+          display: "flex", alignItems: "center", gap: "0.75rem",
+          background: "none", border: "none", cursor: "pointer", padding: 0,
+        }}
+        aria-label="Go to dashboard"
+      >
         <div style={{
           width: 36, height: 36, borderRadius: "0.625rem",
           background: T.lime, display: "flex", alignItems: "center", justifyContent: "center",
@@ -50,7 +59,7 @@ function Nav({ onGetStarted }: { onGetStarted: () => void }) {
         <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 600, fontSize: 16, color: T.white, letterSpacing: "-0.02em" }}>
           ResumeAI
         </span>
-      </div>
+      </button>
 
       {/* Pill nav */}
       <nav style={{
@@ -623,7 +632,7 @@ function FooterCTA({ onGetStarted }: { onGetStarted: () => void }) {
 }
 
 // ── Main export ──────────────────────────────────────────────────────────────
-export function LandingPage({ onGetStarted }: Props) {
+export function LandingPage({ onGetStarted, onLogoClick }: Props) {
   const shellRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -683,7 +692,7 @@ export function LandingPage({ onGetStarted }: Props) {
 
         {/* Content */}
         <div style={{ position: "relative", zIndex: 1 }}>
-          <Nav onGetStarted={onGetStarted} />
+          <Nav onGetStarted={onGetStarted} onLogoClick={onLogoClick} />
           <Hero onGetStarted={onGetStarted} />
           <TrustBar />
           <BentoFeatures />

@@ -9,6 +9,7 @@ interface Props {
   user: User;
   onNewResume: () => void;
   onSignOut: () => void;
+  onLogoClick: () => void;
 }
 
 function ScorePill({ value, color }: { value: number; color: string }) {
@@ -23,7 +24,7 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-export function DashboardPage({ user, onNewResume, onSignOut }: Props) {
+export function DashboardPage({ user, onNewResume, onSignOut, onLogoClick }: Props) {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -40,9 +41,14 @@ export function DashboardPage({ user, onNewResume, onSignOut }: Props) {
     <div style={{ minHeight: "100vh", background: "var(--black)", fontFamily: "'Space Grotesk', sans-serif" }}>
       {/* Nav */}
       <nav style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "1rem 2rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontWeight: 700, fontSize: 18, letterSpacing: "-0.01em", color: "var(--white-primary)" }}>
+        <button
+          type="button"
+          onClick={onLogoClick}
+          style={{ fontWeight: 700, fontSize: 18, letterSpacing: "-0.01em", color: "var(--white-primary)", background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}
+          aria-label="Go to dashboard"
+        >
           Resume<span style={{ color: "var(--lime)" }}>AI</span>
-        </span>
+        </button>
         <UserNav user={user} onDashboard={() => {}} onSignOut={onSignOut} onNewResume={onNewResume} />
       </nav>
 

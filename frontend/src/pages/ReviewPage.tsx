@@ -15,6 +15,7 @@ interface Props {
   user: User | null;
   onDashboard: () => void;
   onSignOut: () => void;
+  onLogoClick: () => void;
 }
 
 function triggerDownload(blob: Blob, filename: string) {
@@ -26,7 +27,7 @@ function triggerDownload(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export function ReviewPage({ result, onDone, user, onDashboard, onSignOut }: Props) {
+export function ReviewPage({ result, onDone, user, onDashboard, onSignOut, onLogoClick }: Props) {
   const [bulletStates, setBulletStates] = useState<Record<string, BulletState>>(() => {
     const init: Record<string, BulletState> = {};
     for (const diff of result.diff) {
@@ -98,9 +99,14 @@ export function ReviewPage({ result, onDone, user, onDashboard, onSignOut }: Pro
         background: "rgba(0,0,0,0.85)",
         backdropFilter: "blur(16px)",
       }}>
-        <span style={{ fontWeight: 700, fontSize: 18, letterSpacing: "-0.01em", color: "var(--white-primary)" }}>
+        <button
+          type="button"
+          onClick={onLogoClick}
+          style={{ fontWeight: 700, fontSize: 18, letterSpacing: "-0.01em", color: "var(--white-primary)", background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}
+          aria-label="Go to dashboard"
+        >
           Resume<span style={{ color: "var(--lime)" }}>AI</span>
-        </span>
+        </button>
         {user ? (
           <UserNav user={user} onDashboard={onDashboard} onSignOut={onSignOut} onNewResume={() => {}} />
         ) : (

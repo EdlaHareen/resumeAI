@@ -7,9 +7,10 @@ interface Props {
   user: User | null;
   onDashboard: () => void;
   onSignOut: () => void;
+  onLogoClick: () => void;
 }
 
-export function DonePage({ onStartOver, user, onDashboard, onSignOut }: Props) {
+export function DonePage({ onStartOver, user, onDashboard, onSignOut, onLogoClick }: Props) {
   return (
     <div style={{
       minHeight: "100vh",
@@ -31,9 +32,14 @@ export function DonePage({ onStartOver, user, onDashboard, onSignOut }: Props) {
 
       {/* Logo */}
       <div style={{ marginBottom: "3rem" }}>
-        <span style={{ fontWeight: 700, fontSize: 20, letterSpacing: "-0.01em", color: "var(--white-primary)" }}>
+        <button
+          type="button"
+          onClick={onLogoClick}
+          style={{ fontWeight: 700, fontSize: 20, letterSpacing: "-0.01em", color: "var(--white-primary)", background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}
+          aria-label="Go to dashboard"
+        >
           Resume<span style={{ color: "var(--lime)" }}>AI</span>
-        </span>
+        </button>
       </div>
 
       {/* Icon */}

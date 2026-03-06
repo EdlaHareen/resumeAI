@@ -12,11 +12,12 @@ interface Props {
   user: User | null;
   onDashboard: () => void;
   onSignOut: () => void;
+  onLogoClick: () => void;
 }
 
 const MIN_JD_WORDS = 50;
 
-export function UploadPage({ onSubmit, loading, error, onClearError, user, onDashboard, onSignOut }: Props) {
+export function UploadPage({ onSubmit, loading, error, onClearError, user, onDashboard, onSignOut, onLogoClick }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [jd, setJd] = useState("");
 
@@ -34,9 +35,14 @@ export function UploadPage({ onSubmit, loading, error, onClearError, user, onDas
     <div style={{ minHeight: "100vh", background: "var(--black)", fontFamily: "'Space Grotesk', sans-serif" }}>
       {/* Nav */}
       <nav style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "1rem 2rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontWeight: 700, fontSize: 18, letterSpacing: "-0.01em", color: "var(--white-primary)" }}>
+        <button
+          type="button"
+          onClick={onLogoClick}
+          style={{ fontWeight: 700, fontSize: 18, letterSpacing: "-0.01em", color: "var(--white-primary)", background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}
+          aria-label="Go to dashboard"
+        >
           Resume<span style={{ color: "var(--lime)" }}>AI</span>
-        </span>
+        </button>
         {user ? (
           <UserNav user={user} onDashboard={onDashboard} onSignOut={onSignOut} onNewResume={() => {}} />
         ) : (

@@ -1,4 +1,4 @@
-import { AlertCircle, X } from "lucide-react";
+import { CircleAlert, X } from "lucide-react";
 
 interface Props {
   message: string;
@@ -22,7 +22,7 @@ export function ErrorBanner({ message, onDismiss }: Props) {
         lineHeight: 1.5,
       }}
     >
-      <AlertCircle size={15} style={{ flexShrink: 0, marginTop: 1 }} aria-hidden="true" />
+      <CircleAlert size={15} style={{ flexShrink: 0, marginTop: 1 }} aria-hidden="true" />
       <p style={{ flex: 1 }}>{message}</p>
       {onDismiss && (
         <button
