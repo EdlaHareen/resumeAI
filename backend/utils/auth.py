@@ -9,7 +9,7 @@ import urllib.request
 
 from fastapi import Header, HTTPException
 
-_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
+_URL = (os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL", "")).rstrip("/")
 _ANON_KEY = os.getenv("VITE_SUPABASE_ANON_KEY", "") or os.getenv("SUPABASE_ANON_KEY", "")
 _SERVICE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 

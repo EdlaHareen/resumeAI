@@ -1,6 +1,6 @@
 """
-LaTeX resume generator.
-Renders structured resume data into a LaTeX document matching the user's template exactly.
+LaTeX resume generator — Jake's Resume format.
+Renders structured resume data into a Jake's-style LaTeX document and compiles via tectonic.
 """
 
 import os
@@ -60,7 +60,7 @@ def _apply_bullets(resume_structured: dict, accepted_bullets: Dict[str, str]) ->
 
 
 # ---------------------------------------------------------------------------
-# Section renderers — exactly matching the template
+# Section renderers — Jake's Resume macros
 # ---------------------------------------------------------------------------
 
 def _render_header(resume: dict) -> str:
@@ -70,44 +70,40 @@ def _render_header(resume: dict) -> str:
     phone = _esc(contact.get("phone", ""))
     location = _esc(contact.get("location", ""))
     linkedin = contact.get("linkedin", "")
-    title = _esc(resume.get("title", ""))
+    github = contact.get("github", "")
+    portfolio = contact.get("portfolio", "")
 
-    email_link = (
-        r"\href{mailto:" + _esc_url(email) + r"}{" + _esc(email) + r"}"
-        if email else ""
-    )
+    # Build contact pipe-separated line
+    parts = []
+    if phone:
+        parts.append(phone)
+    if email:
+        parts.append(
+            r"\href{mailto:" + _esc_url(email) + r"}{\underline{" + _esc(email) + r"}}"
+        )
     if linkedin:
-        if not linkedin.startswith("http"):
-            linkedin_url = "https://" + linkedin
-        else:
-            linkedin_url = linkedin
+        url = linkedin if linkedin.startswith("http") else "https://" + linkedin
         display = linkedin.replace("https://", "").replace("http://", "")
-        linkedin_link = r"\href{" + _esc_url(linkedin_url) + r"}{" + _esc(display) + r"}"
-    else:
-        linkedin_link = ""
+        parts.append(r"\href{" + _esc_url(url) + r"}{\underline{" + _esc(display) + r"}}")
+    if github:
+        url = github if github.startswith("http") else "https://" + github
+        display = github.replace("https://", "").replace("http://", "")
+        parts.append(r"\href{" + _esc_url(url) + r"}{\underline{" + _esc(display) + r"}}")
+    if portfolio:
+        url = portfolio if portfolio.startswith("http") else "https://" + portfolio
+        display = portfolio.replace("https://", "").replace("http://", "")
+        parts.append(r"\href{" + _esc_url(url) + r"}{\underline{" + _esc(display) + r"}}")
 
-    # Contact items on separate lines with \quad at end of each except last
-    contact_parts = [p for p in [phone, email_link, linkedin_link] if p]
-    contact_lines = []
-    for i, part in enumerate(contact_parts):
-        if i < len(contact_parts) - 1:
-            contact_lines.append(f"    {part} \\quad")
-        else:
-            contact_lines.append(f"    {part}")
+    contact_line = r" $|$ ".join(parts)
 
     lines = [
-        r"%====================",
-        r"% Header",
-        r"%====================",
-        r"",
         r"\begin{center}",
-        r"    {\LARGE \textbf{" + name + r"}} \\",
+        r"    {\Huge \scshape " + name + r"} \\ \vspace{1pt}",
     ]
-    if title:
-        lines.append(f"    {title} \\\\")
     if location:
-        lines.append(f"    {location} \\\\")
-    lines += contact_lines
+        lines.append(r"    \small " + location + r" $|$ " + contact_line + r" \\")
+    elif contact_line:
+        lines.append(r"    \small " + contact_line + r" \\")
     lines.append(r"\end{center}")
     return "\n".join(lines)
 
@@ -117,10 +113,8 @@ def _render_summary(resume: dict) -> str:
     if not summary:
         return ""
     return "\n".join([
-        r"%====================",
-        r"\section*{Professional Summary}",
-        r"",
-        _esc(summary),
+        r"\section{Summary}",
+        r"\small " + _esc(summary),
     ])
 
 
@@ -142,88 +136,102 @@ def _get_entry_fields(entry: dict) -> dict:
 
 def _render_experience(section: dict) -> str:
     lines = [
-        r"%====================",
-        r"\section*{Work Experience}",
+        r"\section{Experience}",
+        r"  \resumeSubHeadingListStart",
         r"",
     ]
-    entries = section.get("entries", [])
-    for i, entry in enumerate(entries):
+    for entry in section.get("entries", []):
         fields = _get_entry_fields(entry)
         company = _esc(fields["company"])
         role = _esc(fields["role"])
         dates = _esc(fields["dates"])
         location = _esc(fields["location"])
 
-        # Company line: bold name, location right-aligned if present
-        company_line = r"\textbf{" + company + r"}"
-        if location:
-            company_line += r" \hfill " + location
-        company_line += r" \\"
-        lines.append(company_line)
+        lines.append(
+            r"    \resumeSubheading"
+            + "\n      {" + company + "}{" + dates + "}"
+            + "\n      {" + role + "}{" + location + "}"
+        )
 
-        # Role line: italic title, dates right-aligned — no trailing \\
-        if role:
-            role_line = r"\textit{" + role + r"}"
-            if dates:
-                role_line += r" \hfill " + dates
-            lines.append(role_line)
-
-        bullets = entry.get("bullets", [])
+        bullets = [b for b in entry.get("bullets", []) if b.get("text", "").strip()]
         if bullets:
-            lines.append(r"\begin{itemize}")
+            lines.append(r"      \resumeItemListStart")
             for b in bullets:
-                text = b.get("text", "").strip()
-                if text:
-                    lines.append(r"    \item " + _esc(text))
-            lines.append(r"\end{itemize}")
+                lines.append(r"        \resumeItem{" + _esc(b["text"].strip()) + "}")
+            lines.append(r"      \resumeItemListEnd")
+        lines.append("")
 
-        # Blank line between entries (not after the last one)
-        if i < len(entries) - 1:
-            lines.append("")
-
+    lines.append(r"  \resumeSubHeadingListEnd")
     return "\n".join(lines)
 
 
 def _render_education(section: dict) -> str:
     lines = [
-        r"%====================",
-        r"\section*{Education}",
+        r"\section{Education}",
+        r"  \resumeSubHeadingListStart",
         r"",
     ]
-    entries = section.get("entries", [])
-    for i, entry in enumerate(entries):
+    for entry in section.get("entries", []):
         fields = _get_entry_fields(entry)
         school = _esc(fields["company"])
         degree = _esc(fields["role"])
         dates = _esc(fields["dates"])
+        location = _esc(fields["location"])
 
-        school_line = r"\textbf{" + school + r"}"
-        if dates:
-            school_line += r" \hfill " + dates
-        school_line += r" \\"
-        lines.append(school_line)
+        lines.append(
+            r"    \resumeSubheading"
+            + "\n      {" + school + "}{" + dates + "}"
+            + "\n      {" + degree + "}{" + location + "}"
+        )
 
-        if degree:
-            lines.append(degree)
-
+        # Extra info lines (GPA, coursework etc.) as plain text bullets
         for b in entry.get("bullets", []):
             text = b.get("text", "").strip()
             if text:
-                lines.append(_esc(text))
+                lines.append(r"      \resumeItemListStart")
+                lines.append(r"        \resumeItem{" + _esc(text) + "}")
+                lines.append(r"      \resumeItemListEnd")
+        lines.append("")
 
-        # Blank line between entries (not after the last one)
-        if i < len(entries) - 1:
-            lines.append("")
+    lines.append(r"  \resumeSubHeadingListEnd")
+    return "\n".join(lines)
 
+
+def _render_projects(section: dict) -> str:
+    lines = [
+        r"\section{Projects}",
+        r"    \resumeSubHeadingListStart",
+        r"",
+    ]
+    for entry in section.get("entries", []):
+        fields = _get_entry_fields(entry)
+        name = _esc(fields["company"] or entry.get("header", ""))
+        # role field often holds tech stack for project entries
+        stack = fields["role"]
+        dates = _esc(fields["dates"])
+
+        if stack:
+            heading = r"\textbf{" + name + r"} $|$ \emph{" + _esc(stack) + r"}"
+        else:
+            heading = r"\textbf{" + name + r"}"
+
+        lines.append(r"      \resumeProjectHeading")
+        lines.append(r"          {" + heading + "}{" + dates + "}")
+
+        bullets = [b for b in entry.get("bullets", []) if b.get("text", "").strip()]
+        if bullets:
+            lines.append(r"          \resumeItemListStart")
+            for b in bullets:
+                lines.append(r"            \resumeItem{" + _esc(b["text"].strip()) + "}")
+            lines.append(r"          \resumeItemListEnd")
+        lines.append("")
+
+    lines.append(r"    \resumeSubHeadingListEnd")
     return "\n".join(lines)
 
 
 def _render_skills(section: dict) -> str:
-    lines = [
-        r"%====================",
-        r"\section*{Technical Skills}",
-        r"",
-    ]
+    skill_lines = []
     for entry in section.get("entries", []):
         for b in entry.get("bullets", []):
             text = b.get("text", "").strip()
@@ -231,30 +239,43 @@ def _render_skills(section: dict) -> str:
                 continue
             if ":" in text:
                 cat, _, items = text.partition(":")
-                lines.append(
-                    r"\textbf{" + _esc(cat.strip()) + r":} " + _esc(items.strip()) + r" \\"
+                skill_lines.append(
+                    r"     \textbf{" + _esc(cat.strip()) + r"}{: " + _esc(items.strip()) + r"} \\"
                 )
             else:
-                lines.append(_esc(text) + r" \\")
+                skill_lines.append(_esc(text) + r" \\")
 
         if not entry.get("bullets"):
-            header = entry.get("header", "").strip() or entry.get("company", "").strip()
+            header = (entry.get("header", "") or entry.get("company", "")).strip()
             if header:
                 if ":" in header:
                     cat, _, items = header.partition(":")
-                    lines.append(
-                        r"\textbf{" + _esc(cat.strip()) + r":} " + _esc(items.strip()) + r" \\"
+                    skill_lines.append(
+                        r"     \textbf{" + _esc(cat.strip()) + r"}{: " + _esc(items.strip()) + r"} \\"
                     )
                 else:
-                    lines.append(_esc(header) + r" \\")
+                    skill_lines.append(_esc(header) + r" \\")
 
+    if not skill_lines:
+        return ""
+
+    lines = [
+        r"\section{Technical Skills}",
+        r" \begin{itemize}[leftmargin=0.15in, label={}]",
+        r"    \small{\item{",
+    ]
+    lines += skill_lines
+    lines += [
+        r"    }}",
+        r" \end{itemize}",
+    ]
     return "\n".join(lines)
 
 
 def _render_certifications(section: dict) -> str:
     certs = []
     for entry in section.get("entries", []):
-        header = entry.get("header", "").strip() or entry.get("company", "").strip()
+        header = (entry.get("header", "") or entry.get("company", "")).strip()
         if header:
             certs.append(_esc(header))
         for b in entry.get("bullets", []):
@@ -265,10 +286,8 @@ def _render_certifications(section: dict) -> str:
     if not certs:
         return ""
 
-    # Trailing space after Certifications matches the template exactly.
-    # No %==================== divider — certifications attaches directly to skills.
     return "\n".join([
-        r"\section*{Certifications} ",
+        r"\section{Certifications}",
         ", ".join(certs),
     ])
 
@@ -276,28 +295,24 @@ def _render_certifications(section: dict) -> str:
 def _render_generic_section(section: dict) -> str:
     title = _esc(section.get("title", "Section"))
     lines = [
-        r"%====================",
-        r"\section*{" + title + r"}",
+        r"\section{" + title + r"}",
+        r"  \resumeSubHeadingListStart",
         r"",
     ]
-    entries = section.get("entries", [])
-    for i, entry in enumerate(entries):
-        header = entry.get("header", "").strip()
+    for entry in section.get("entries", []):
+        header = (entry.get("header", "") or entry.get("company", "")).strip()
         if header:
-            lines.append(r"\textbf{" + _esc(header) + r"}")
+            lines.append(r"    \item \textbf{" + _esc(header) + r"}")
 
-        bullets = entry.get("bullets", [])
+        bullets = [b for b in entry.get("bullets", []) if b.get("text", "").strip()]
         if bullets:
-            lines.append(r"\begin{itemize}")
+            lines.append(r"      \resumeItemListStart")
             for b in bullets:
-                text = b.get("text", "").strip()
-                if text:
-                    lines.append(r"    \item " + _esc(text))
-            lines.append(r"\end{itemize}")
+                lines.append(r"        \resumeItem{" + _esc(b["text"].strip()) + "}")
+            lines.append(r"      \resumeItemListEnd")
+        lines.append("")
 
-        if i < len(entries) - 1:
-            lines.append("")
-
+    lines.append(r"  \resumeSubHeadingListEnd")
     return "\n".join(lines)
 
 
@@ -357,30 +372,94 @@ def _split_role_dates(text: str) -> tuple:
 
 
 # ---------------------------------------------------------------------------
-# Main LaTeX document builder
+# Jake's Resume preamble
 # ---------------------------------------------------------------------------
 
-LATEX_PREAMBLE = r"""\documentclass[11pt]{article}
+LATEX_PREAMBLE = r"""\documentclass[letterpaper,11pt]{article}
 
-\usepackage[a4paper,margin=0.5in]{geometry}
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
 \usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
 \usepackage{enumitem}
 \usepackage[hidelinks]{hyperref}
-\usepackage{parskip}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
 
-\pagenumbering{gobble}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
 
-% Section formatting
-\titleformat{\section}{\large\bfseries}{}{0em}{}[\titlerule]
-\titlespacing{\section}{0pt}{8pt}{4pt}
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-.5in}
+\addtolength{\textheight}{1.0in}
 
-\setlist[itemize]{noitemsep, topsep=2pt, leftmargin=*}
+\urlstyle{same}
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+% Section heading: small-caps, left-aligned, followed by titlerule
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{-5pt}]
+
+%-------------------------
+% Custom commands
+\newcommand{\resumeItem}[1]{
+  \item\small{
+    {#1 \vspace{-2pt}}
+  }
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubSubheading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \textit{\small#1} & \textit{\small #2} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \small#1 & #2 \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubItem}[1]{\resumeItem{#1}\vspace{-4pt}}
+
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+%-------------------------------------------
 
 \begin{document}
 """
 
-LATEX_POSTAMBLE = "\n\\end{document}\n"
+LATEX_POSTAMBLE = "\n%-------------------------------------------\n\\end{document}\n"
 
+
+# ---------------------------------------------------------------------------
+# Main LaTeX document builder
+# ---------------------------------------------------------------------------
 
 def build_latex(resume: dict) -> str:
     body_parts = []
@@ -403,6 +482,8 @@ def build_latex(resume: dict) -> str:
                 tex = _render_experience(section)
             elif stype == "education":
                 tex = _render_education(section)
+            elif stype == "projects":
+                tex = _render_projects(section)
             elif stype == "skills":
                 tex = _render_skills(section)
             elif stype == "certifications":
@@ -412,17 +493,11 @@ def build_latex(resume: dict) -> str:
             if tex:
                 body_parts.append(tex)
 
-    # Join sections with a blank line between each, EXCEPT skills→certifications
-    # which attach directly (no blank line), matching the template exactly.
     result = LATEX_PREAMBLE
     for i, part in enumerate(body_parts):
         result += part
         if i < len(body_parts) - 1:
-            next_part = body_parts[i + 1]
-            if next_part.startswith(r"\section*{Certifications}"):
-                result += "\n"
-            else:
-                result += "\n\n"
+            result += "\n\n"
     result += LATEX_POSTAMBLE
     return result
 
