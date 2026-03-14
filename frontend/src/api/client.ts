@@ -1,0 +1,215 @@
+import type { DownloadRequest, ResumeSummary, JDAnalysis } from "../types";
+
+const BASE = "/api";
+
+/** Error thrown when the API returns a structured error with a machine-readable code. */
+export class ApiError extends Error {
+  constructor(public readonly code: string, message: string) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+export async function startTailor(
+  resumeFile: File,
+  jobDescription: string,
+  userId?: string,
+  accessToken?: string,
+): Promise<string> {
+  const form = new FormData();
+  form.append("resume_file", resumeFile);
+  form.append("job_description", jobDescription);
+  form.append("original_filename", resumeFile.name);
+  if (userId) form.append("user_id", userId);
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30_000);
+
+  const headers: Record<string, string> = {};
+  if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
+
+  let resp: Response;
+  try {
+    resp = await fetch(`${BASE}/tailor/start`, {
+      method: "POST",
+      headers,
+      body: form,
+      signal: controller.signal,
+    });
+  } catch (e) {
+    if (e instanceof DOMException && e.name === "AbortError") {
+      throw new Error("Upload timed out. Please try again.");
+    }
+    throw new Error("Could not reach the server. Make sure the backend is running on port 8001.");
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  if (!resp.ok) {
+    if (resp.status === 429) throw new Error("Too many requests. Please wait a moment and try again.");
+    const text = await resp.text().catch(() => "");
+    try {
+      const err = JSON.parse(text);
+      const detail = err.detail;
+      if (typeof detail === "object" && detail?.message) {
+        throw new ApiError(detail.code ?? "", detail.message);
+      }
+      if (typeof detail === "string") throw new Error(detail);
+    } catch (e) {
+      if (e instanceof Error && !(e instanceof SyntaxError) && e.message !== text) throw e;
+    }
+    throw new Error(resp.status >= 500 ? `Server error (${resp.status}). Please try again.` : "Request failed");
+  }
+
+  const data: { request_id: string } = await resp.json();
+  return data.request_id;
+}
+
+
+export async function downloadFile(
+  format: "pdf" | "docx",
+  req: DownloadRequest,
+  userId?: string,
+): Promise<Blob> {
+  const resp = await fetch(`${BASE}/download/${format}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...req, user_id: userId }),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({ detail: "Download failed" }));
+    throw new Error(typeof err.detail === "string" ? err.detail : "Download failed");
+  }
+
+  return resp.blob();
+}
+
+export interface CoverLetterResult {
+  cover_letter: string;
+  hiring_manager: string;
+  company_name: string;
+  job_title: string;
+}
+
+export async function generateCoverLetter(
+  resumeSummary: ResumeSummary,
+  jdAnalysis: JDAnalysis,
+  signal?: AbortSignal
+): Promise<CoverLetterResult> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 130_000);
+  const combinedSignal = signal
+    ? AbortSignal.any([signal, controller.signal])
+    : controller.signal;
+
+  let resp: Response;
+  try {
+    resp = await fetch(`${BASE}/cover-letter`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resume_summary: resumeSummary, jd_analysis: jdAnalysis }),
+      signal: combinedSignal,
+    });
+  } catch (e) {
+    if (e instanceof DOMException && e.name === "AbortError") {
+      // If the caller's own signal aborted (e.g. component cleanup), re-throw as-is
+      // so the caller can silently ignore it. Only show "timed out" for our internal timeout.
+      if (signal?.aborted) throw e;
+      throw new Error("Cover letter generation timed out. Please try again.");
+    }
+    throw new Error("Could not reach the server.");
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  if (!resp.ok) {
+    if (resp.status === 429) throw new Error("Too many requests. Please wait a moment and try again.");
+    const err = await resp.json().catch(() => ({ detail: "Generation failed" }));
+    throw new Error(typeof err.detail === "string" ? err.detail : "Cover letter generation failed");
+  }
+
+  return resp.json();
+}
+
+export async function downloadCoverLetterPdf(
+  resumeSummary: ResumeSummary,
+  coverLetterText: string,
+  hiringManager: string,
+  companyName: string,
+  jobTitle: string,
+): Promise<Blob> {
+  const resp = await fetch(`${BASE}/cover-letter/pdf`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      resume_summary: resumeSummary,
+      cover_letter_text: coverLetterText,
+      hiring_manager: hiringManager,
+      company_name: companyName,
+      job_title: jobTitle,
+    }),
+  });
+
+  if (!resp.ok) {
+    if (resp.status === 429) throw new Error("Too many requests. Please wait a moment and try again.");
+    const err = await resp.json().catch(() => ({ detail: "PDF generation failed" }));
+    throw new Error(typeof err.detail === "string" ? err.detail : "PDF generation failed");
+  }
+
+  return resp.blob();
+}
+
+
+export interface SubscriptionInfo {
+  tier: "free" | "pro";
+  status?: string;
+  period_end?: string;
+  usage?: number;
+  limit?: number;
+}
+
+export async function getUserSubscription(userId: string, accessToken?: string): Promise<SubscriptionInfo> {
+  const headers: Record<string, string> = {};
+  if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
+  const resp = await fetch(`${BASE}/razorpay/subscription/${userId}`, { headers });
+  if (!resp.ok) return { tier: "free", usage: 0, limit: 3 };
+  return resp.json();
+}
+
+export async function createRazorpaySubscription(
+  userId: string,
+  currency: "INR" | "USD",
+  userEmail?: string,
+): Promise<{ subscription_id: string; key_id: string; currency: string }> {
+  const resp = await fetch(`${BASE}/razorpay/subscribe`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: userId, user_email: userEmail, currency }),
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({ detail: "Subscription creation failed" }));
+    throw new Error(typeof err.detail === "string" ? err.detail : "Subscription creation failed");
+  }
+  return resp.json();
+}
+
+export async function verifyRazorpayPayment(
+  payload: {
+    user_id: string;
+    razorpay_payment_id: string;
+    razorpay_subscription_id: string;
+    razorpay_signature: string;
+  },
+  accessToken: string,
+): Promise<void> {
+  const resp = await fetch(`${BASE}/razorpay/verify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${accessToken}` },
+    body: JSON.stringify(payload),
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({ detail: "Verification failed" }));
+    throw new Error(typeof err.detail === "string" ? err.detail : "Payment verification failed");
+  }
+}

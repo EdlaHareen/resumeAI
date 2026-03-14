@@ -1,0 +1,52 @@
+import logging
+import os
+import traceback
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
+
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+
+from limiter import limiter
+from api.routes.health import router as health_router
+from api.routes.download import router as download_router
+from api.routes.stream import router as stream_router
+from api.routes.cover_letter import router as cover_letter_router
+from api.routes.razorpay_routes import router as razorpay_router
+from api.routes.admin import router as admin_router
+
+app = FastAPI(title="ResumeAI API", version="1.0.0")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    tb = traceback.format_exc()
+    logging.error("Unhandled exception on %s %s:\n%s", request.method, request.url.path, tb)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"{type(exc).__name__}: {exc}"},
+    )
+
+_raw_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
+_allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(health_router, prefix="/api")
+app.include_router(download_router, prefix="/api")
+app.include_router(stream_router, prefix="/api")
+app.include_router(cover_letter_router, prefix="/api")
+app.include_router(razorpay_router, prefix="/api")
+app.include_router(admin_router, prefix="/api")

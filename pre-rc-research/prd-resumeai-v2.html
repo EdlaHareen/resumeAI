@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ResumeAI v2 - Complete PRD</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@400;600;700;800&display=swap');
+
+  :root {
+    --navy: #1B2A4A;
+    --charcoal: #333333;
+    --gold: #C4952B;
+    --gold-light: rgba(196, 149, 43, 0.06);
+    --light-gray: #F5F5F3;
+    --mid-gray: #E8E8E8;
+    --white: #FFFFFF;
+    --page-width: 816px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    color: var(--charcoal);
+    background: #D8D8D8;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    width: var(--page-width);
+    min-height: 1056px;
+    margin: 32px auto;
+    background: var(--white);
+    box-shadow: 0 2px 24px rgba(0,0,0,0.12);
+    position: relative;
+    page-break-after: always;
+    overflow: hidden;
+  }
+
+  /* ===== COVER ===== */
+  .cover {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 1056px;
+    overflow: hidden;
+  }
+
+  .cover-top-bar { height: 6px; background: var(--gold); position: relative; z-index: 1; }
+  .cover-header { padding: 48px 72px 0; display: flex; justify-content: space-between; align-items: flex-start; position: relative; z-index: 1; }
+  .cover-confidential { font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); border: 1px solid var(--gold); padding: 4px 12px; }
+  .cover-date { font-size: 13px; color: #888; font-weight: 500; }
+  .cover-body { padding: 0 72px; flex: 1; display: flex; flex-direction: column; justify-content: center; position: relative; z-index: 1; }
+  .cover-geo { width: 80px; height: 4px; background: var(--gold); margin-bottom: 32px; }
+  .cover-title { font-family: 'Playfair Display', Georgia, serif; font-size: 44px; font-weight: 700; color: var(--navy); line-height: 1.12; margin-bottom: 16px; letter-spacing: -0.5px; }
+  .cover-subtitle { font-size: 17px; font-weight: 400; color: #666; line-height: 1.55; max-width: 520px; margin-bottom: 48px; }
+  .cover-meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 2px solid var(--navy); padding-top: 24px; }
+  .cover-meta-item { padding-right: 24px; }
+  .cm-label { font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: #999; margin-bottom: 4px; }
+  .cm-value { font-size: 14px; font-weight: 600; color: var(--navy); }
+  .cover-footer { padding: 32px 72px; border-top: 1px solid var(--mid-gray); display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 1; }
+  .cover-footer-left { font-size: 11px; color: #999; }
+  .geo-bottom { display: flex; gap: 4px; }
+  .geo-bottom span { display: block; width: 24px; height: 4px; background: var(--navy); }
+  .geo-bottom span:last-child { background: var(--gold); width: 48px; }
+
+  /* ===== PAGE CHROME ===== */
+  .ph { padding: 24px 72px 16px; border-bottom: 2px solid var(--navy); display: flex; justify-content: space-between; align-items: baseline; }
+  .ph-l { font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--navy); }
+  .ph-r { font-size: 10px; color: #999; letter-spacing: 1px; text-transform: uppercase; }
+  .pc { padding: 40px 72px 80px; }
+  .pf { position: absolute; bottom: 0; left: 0; right: 0; padding: 16px 72px; border-top: 1px solid var(--mid-gray); display: flex; justify-content: space-between; font-size: 10px; color: #999; }
+
+  /* ===== TYPOGRAPHY ===== */
+  .sn { font-size: 12px; font-weight: 700; color: var(--gold); letter-spacing: 1px; margin-bottom: 4px; display: block; }
+  .st { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; color: var(--navy); margin-bottom: 8px; line-height: 1.2; }
+  .sd { width: 48px; height: 3px; background: var(--gold); margin: 16px 0 28px; }
+  h3 { font-size: 15px; font-weight: 700; color: var(--navy); margin: 28px 0 10px; letter-spacing: -0.2px; }
+  h3:first-child { margin-top: 0; }
+  p { font-size: 13px; line-height: 1.75; margin-bottom: 14px; }
+
+  /* ===== EXEC SUMMARY ===== */
+  .exec { display: grid; grid-template-columns: 4px 1fr; margin: 0 0 32px; }
+  .exec-bar { background: var(--gold); }
+  .exec-body { background: var(--light-gray); padding: 24px 28px; }
+  .exec-label { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+  .exec-body p { font-size: 13.5px; line-height: 1.7; margin-bottom: 10px; }
+  .exec-body p:last-child { margin-bottom: 0; }
+
+  /* ===== INSIGHT BOX ===== */
+  .insight { border-left: 3px solid var(--navy); padding: 14px 20px; margin: 20px 0; background: var(--light-gray); }
+  .insight-label { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--navy); margin-bottom: 6px; }
+  .insight p { font-size: 12.5px; color: #555; margin-bottom: 0; }
+
+  /* ===== TWO-COLUMN ===== */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+  .col-block { padding: 20px; border: 1px solid var(--mid-gray); }
+  .col-block-title { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--navy); margin-bottom: 10px; padding-bottom: 6px; border-bottom: 2px solid var(--navy); }
+  .col-block p { font-size: 12px; line-height: 1.6; margin-bottom: 0; }
+  .col-block.target { border-color: var(--gold); border-left: 3px solid var(--gold); }
+  .col-block.target .col-block-title { border-bottom-color: var(--gold); color: var(--gold); }
+
+  /* ===== METRICS ===== */
+  .metrics { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--mid-gray); margin: 24px 0; }
+  .metric { padding: 20px 14px; text-align: center; border-right: 1px solid var(--mid-gray); }
+  .metric:last-child { border-right: none; }
+  .metric-val { font-family: 'Playfair Display', serif; font-size: 32px; font-weight: 700; color: var(--navy); line-height: 1; margin-bottom: 4px; }
+  .metric-label { font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #999; margin-bottom: 6px; }
+  .metric-note { font-size: 11px; font-weight: 600; color: var(--gold); }
+
+  /* ===== NUMBERED LIST ===== */
+  .nlist { counter-reset: item; list-style: none; padding: 0; margin: 14px 0; }
+  .nlist li { counter-increment: item; padding: 7px 0 7px 36px; position: relative; font-size: 12.5px; line-height: 1.6; border-bottom: 1px solid var(--mid-gray); }
+  .nlist li::before { content: counter(item, decimal-leading-zero); position: absolute; left: 0; font-family: 'Playfair Display', serif; font-weight: 700; color: var(--gold); font-size: 15px; }
+
+  /* ===== TABLES ===== */
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 11.5px; }
+  thead th { background: var(--navy); color: var(--white); font-weight: 600; text-align: left; padding: 8px 12px; font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase; }
+  tbody td { padding: 8px 12px; border-bottom: 1px solid var(--mid-gray); vertical-align: top; line-height: 1.5; }
+  tbody td:first-child, thead th:first-child { white-space: nowrap; }
+  tbody tr:nth-child(even) { background: var(--light-gray); }
+  .badge { display: inline-block; padding: 2px 8px; font-size: 9px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; border-radius: 2px; }
+  .b-must { background: var(--navy); color: var(--white); }
+  .b-should { background: var(--gold); color: var(--white); }
+
+  /* ===== ICP TABLE ===== */
+  .icp-table { margin: 16px 0; }
+  .icp-row { display: grid; grid-template-columns: 140px 1fr; border-bottom: 1px solid var(--mid-gray); }
+  .icp-row:nth-child(even) { background: var(--light-gray); }
+  .icp-label { padding: 8px 12px; font-size: 11px; font-weight: 700; color: var(--navy); }
+  .icp-value { padding: 8px 12px; font-size: 11.5px; line-height: 1.5; }
+
+  /* ===== USER FLOW ===== */
+  .flow-box { background: var(--light-gray); border: 1px solid var(--mid-gray); padding: 16px 20px; margin: 12px 0; font-size: 12px; line-height: 1.8; font-family: 'Inter', monospace; }
+  .flow-title { font-size: 11px; font-weight: 700; color: var(--navy); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+
+  /* ===== MODULE HEADER ===== */
+  .mod-header { background: var(--navy); color: var(--white); padding: 8px 14px; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin: 24px 0 0; }
+
+  @media print { body { background: white; } .page { box-shadow: none; margin: 0; } }
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="page cover">
+  <div>
+    <div class="cover-top-bar"></div>
+    <div class="cover-header">
+      <div class="cover-confidential">Confidential</div>
+      <div class="cover-date">March 2026</div>
+    </div>
+  </div>
+  <div class="cover-body">
+    <div class="cover-geo"></div>
+    <div class="cover-title">ResumeAI v2</div>
+    <div class="cover-subtitle">ResumeAI is an AI-powered resume tailoring platform (V1 live). Core flow: user uploads resume (PDF/DOCX) + pastes job description → Claude AI runs a 4-stage pipeline (Stage 1: parse resume to structured JSON via Haiku, Stage 2: analyze JD for ATS keywords via Haiku, Stage 3: rewrite bullets to match</div>
+    <div class="cover-meta-grid">
+      <div class="cover-meta-item"><div class="cm-label">Client</div><div class="cm-value">ResumeAI v2</div></div>
+      <div class="cover-meta-item"><div class="cm-label">Status</div><div class="cm-value">Draft</div></div>
+      <div class="cover-meta-item"><div class="cm-label">Domain</div><div class="cm-value">Complex</div></div>
+      <div class="cover-meta-item"><div class="cm-label">Personas</div><div class="cm-value">18</div></div>
+    </div>
+  </div>
+  <div class="cover-footer">
+    <div class="cover-footer-left">Pre-RC Method Agent Output &mdash; 18 Personas &middot; 253,974 Tokens</div>
+    <div class="geo-bottom"><span></span><span></span><span></span></div>
+  </div>
+  <div style="padding: 0 72px 16px; position: relative; z-index: 1;">
+    <div style="font-size: 7px; line-height: 1.5; color: #bbb; font-style: italic; max-width: 520px;">Generated with AI assistance via the Pre-RC Method Agent in collaboration with human-in-the-loop strategic direction. The Pre-RC Method Agent is a product of Toerana.</div>
+  </div>
+</div>
+<!-- EXEC SUMMARY -->
+<div class="page">
+  <div class="ph"><div class="ph-l">PRD &mdash; Pre-RC Method Agent</div><div class="ph-r">Confidential</div></div>
+  <div class="pc">
+    <span class="sn">01</span>
+    <div class="st">Executive Summary</div>
+    <div class="sd"></div>
+    <div class="exec">
+      <div class="exec-bar"></div>
+      <div class="exec-body">
+        <div class="exec-label">Strategic Recommendation</div>
+        <p>ResumeAI v2 must evolve from a resume tailoring utility to a trusted career acceleration partner that owns the entire application workflow. This requires three strategic shifts: (1) Surface trust mechanisms through AI confidence scores and batch actions to reduce review fatigue by 60%, (2) Close workflow gaps via Chrome extension and job tracker to match Teal's retention while undercutting their $29/month price by 66% at $9.99/month, and (3) Complete the application package by elevating cover letter discoverability from 12% to 50% opt-in and adding template preview to eliminate lock-in anxiety.</p>
+      </div>
+    </div>
+    <div class="metrics">
+      <div class="metric"><div class="metric-label">30-Day Active User Rate</div><div class="metric-val">22% (v1)</div><div class="metric-note">Target: 45%</div></div>
+      <div class="metric"><div class="metric-label">Free-to-Paid Conversion</div><div class="metric-val">8%</div><div class="metric-note">Target: 24% (3x)</div></div>
+      <div class="metric"><div class="metric-label">Avg Diff Review Time</div><div class="metric-val">18 min</div><div class="metric-note">Target: 7 min</div></div>
+      <div class="metric"><div class="metric-label">Cover Letter Opt-In</div><div class="metric-val">12%</div><div class="metric-note">Target: 50%</div></div>
+      <div class="metric"><div class="metric-label">COGS per Session</div><div class="metric-val">$0.058</div><div class="metric-note">Target: &lt;$0.50</div></div>
+    </div>
+    <h3>Critical Pain Points</h3>
+    <ol class="nlist">
+      <li><strong>Gap 1: Incomplete Trust & Control</strong> - Quality-Focused Professionals spend 20 minutes verifying AI changes when they only have 30 minutes total, lacking confidence indicators to guide their effort</li>
+      <li><strong>Gap 2: Fragmented Workflow</strong> - Efficiency-Driven Applicants face friction manually copying job descriptions, re-uploading resumes, and losing tailored versions after 10-minute Redis expiration</li>
+      <li><strong>Gap 3: Incomplete Application Package</strong> - 70% of jobs require cover letters yet only 12% discover the existing feature, with mismatched formatting breaking professional cohesion</li>
+    </ol>
+    <div class="insight">
+      <div class="insight-label">Key Insight</div>
+      <p>Job seekers face a brutal paradox: 78% of applications never reach human eyes due to keyword mismatches, yet manual tailoring takes 45-90 minutes per application. ResumeAI's unique 4-stage Claude pipeline with hallucination validation solves this, but the moat is invisible to users and undersold in positioning while competitors close the gap.</p>
+    </div>
+  </div>
+  <div class="pf"><span>Pre-RC Method Agent Output</span><span>2</span></div>
+</div>
+<!-- TARGET USER & ICP -->
+<div class="page">
+  <div class="ph"><div class="ph-l">PRD &mdash; Pre-RC Method Agent</div><div class="ph-r">Confidential</div></div>
+  <div class="pc">
+    <span class="sn">02</span>
+    <div class="st">Target User &amp; ICP</div>
+    <div class="sd"></div>
+    <h3>Ideal Customer Profile</h3>
+    <div class="icp-table">
+      <div class="icp-row"><div class="icp-label">Age Range</div><div class="icp-value">28-38 years</div></div>
+      <div class="icp-row"><div class="icp-label">Experience Level</div><div class="icp-value">5-10 years, mid-career</div></div>
+      <div class="icp-row"><div class="icp-label">Employment Status</div><div class="icp-value">Currently employed, seeking transition</div></div>
+      <div class="icp-row"><div class="icp-label">Salary Target</div><div class="icp-value">20-40% increase ($60K-120K current)</div></div>
+      <div class="icp-row"><div class="icp-label">Application Volume</div><div class="icp-value">3-8 jobs per month</div></div>
+      <div class="icp-row"><div class="icp-label">Time Investment</div><div class="icp-value">60-90 minutes per application</div></div>
+      <div class="icp-row"><div class="icp-label">Willingness to Pay</div><div class="icp-value">$10-25/month for career tools</div></div>
+      <div class="icp-row"><div class="icp-label">Tech Savviness</div><div class="icp-value">Active on LinkedIn, uses 2-3 job search tools</div></div>
+    </div>
+    <h3>Primary Persona</h3>
+    <div class="exec">
+      <div class="exec-bar"></div>
+      <div class="exec-body">
+        <div class="exec-label">Sarah Chen &mdash; Mid-Career Professional in Transition</div>
+        <p>32-year-old marketing manager with 7 years experience seeking to pivot from finance to tech industry. Currently employed but actively searching for roles offering $85K-110K (30% increase). Applies to 5 carefully selected positions per month, investing 75 minutes per application. Values both speed and quality, willing to pay $15/month for tools that provide competitive edge while saving time.</p>
+      </div>
+    </div>
+    <div class="two-col">
+      <div class="col-block">
+        <div class="col-block-title">Pain Points</div>
+        <p><strong>Trust Gap in AI Output:</strong> Spends 65% of time verifying AI suggestions rather than creating content, lacking confidence indicators to guide review effort efficiently</p>
+        <p style="margin-top: 8px;"><strong>Workflow Fragmentation:</strong> Loses 4-6 minutes per application on context switching between job boards, resume tools, and file management systems</p>
+        <p style="margin-top: 8px;"><strong>Template Lock-In Anxiety:</strong> 40% abandon mid-process if they dislike output format after investing 30 minutes, unable to preview visual style upfront</p>
+        <p style="margin-top: 8px;"><strong>Incomplete Application Materials:</strong> Struggles to create matching cover letters, with mismatched formatting breaking professional brand cohesion</p>
+      </div>
+      <div class="col-block">
+        <div class="col-block-title">Behavioral Traits</div>
+        <p><strong>Quality-Speed Balance:</strong> Values both precision and efficiency, willing to invest time in strategic applications but seeks tools to eliminate repetitive work</p>
+        <p style="margin-top: 8px;"><strong>Professional Brand Conscious:</strong> Concerned about reputation and executive presence, needs materials that reflect authentic voice and differentiate from competitors</p>
+        <p style="margin-top: 8px;"><strong>Tool Evaluator:</strong> Actively researches and compares multiple solutions, reads reviews, and expects clear ROI before committing to subscriptions</p>
+        <p style="margin-top: 8px;"><strong>Network Sharer:</strong> Shares effective tools with professional network, driving 30% of new user acquisition through word-of-mouth referrals</p>
+      </div>
+    </div>
+    <h3>Secondary Users</h3>
+    <p>Career changers (military veterans, returning parents, freelancers seeking corporate roles) needing transferable skills translation; international users requiring localization for US/UK conventions; entry-level candidates needing education-first resume structures that don't penalize lack of quantified professional results</p>
+    <h3>Accessibility Considerations</h3>
+    <ol class="nlist">
+      <li><strong>WCAG 2.1 AA compliance for screen readers</strong></li>
+      <li><strong>Keyboard navigation for all interactive elements</strong></li>
+      <li><strong>High contrast mode support</strong></li>
+      <li><strong>Adjustable font sizes</strong></li>
+      <li><strong>Alternative text for all visual elements</strong></li>
+    </ol>
+  </div>
+  <div class="pf"><span>Pre-RC Method Agent Output</span><span>3</span></div>
+</div>
+<!-- SOLUTION OVERVIEW -->
+<div class="page">
+  <div class="ph"><div class="ph-l">PRD &mdash; Pre-RC Method Agent</div><div class="ph-r">Confidential</div></div>
+  <div class="pc">
+    <span class="sn">03</span>
+    <div class="st">Solution Overview</div>
+    <div class="sd"></div>
+    <p>ResumeAI v2 transforms from a single-purpose resume tailoring tool into an end-to-end AI career acceleration platform. The solution maintains the unique 4-stage Claude pipeline with hallucination validation while adding trust mechanisms (AI confidence scores, batch actions), closing workflow gaps (Chrome extension, job tracker), and completing the application package (discoverable cover letters, template preview). Strategic positioning: 'Claude-powered accuracy at Teal speeds, half the price.'</p>
+    <div class="two-col">
+      <div class="col-block">
+        <div class="col-block-title">Current State</div>
+        <p>V1 provides isolated resume tailoring with 4-stage Claude pipeline (parse, analyze, rewrite, validate) achieving measurable ATS improvements. However, users face trust gaps requiring 20-minute manual verification, workflow friction from manual job description copying and lost tailored versions, and incomplete application packages with only 12% discovering cover letter generation. The Stage 4 hallucination validation moat is invisible to users.</p>
+      </div>
+      <div class="col-block target">
+        <div class="col-block-title">Target State</div>
+        <p>V2 becomes a trusted career acceleration partner owning the entire workflow from job discovery through interview preparation. Users see AI confidence scores directing review effort to low-confidence bullets only (7-minute review vs. 18 minutes), use Chrome extension for 1-click tailoring from job boards, track applications with linked resume versions, generate matching cover letter PDFs with 50% opt-in, and preview templates before committing to tailoring process.</p>
+      </div>
+    </div>
+    <h3>Migration Phases</h3>
+    <table>
+      <thead><tr><th style="width:64px">Phase</th><th style="width:72px">Weeks</th><th>Scope</th><th style="width:112px">Rollout</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Phase 1: Foundation</strong></td><td>1-4</td><td>Token cost optimization (50% reduction via caching/differential rewriting), Stripe freemium implementation (3 free tailors/month), analytics instrumentation, paywall modal with A/B testing</td><td>Internal team + 20 power users beta</td></tr>
+        <tr><td><strong>Phase 2: Core Experience</strong></td><td>5-8</td><td>Template gallery with preview (5 LaTeX templates), AI confidence scores with batch actions, cover letter discoverability modal, LaTeX cover letter PDF generation</td><td>100 users (50 EDA, 50 QFP archetypes)</td></tr>
+        <tr><td><strong>Phase 3: Growth Features</strong></td><td>9-14</td><td>Chrome extension (Manifest V3) with auto-JD extraction, basic job tracker with Kanban board, secondary user hardening (career changer/international/entry-level prompts)</td><td>500 users (prioritize extension waitlist)</td></tr>
+        <tr><td><strong>Phase 4: Premium Differentiation</strong></td><td>15-18</td><td>Interview prep mode (question generation + answer evaluation), B2B pilot (batch API, white-label option) - both require demand validation before full build</td><td>Premium tier only, existing paid users</td></tr>
+      </tbody>
+    </table>
+    <h3>Cost Impact</h3>
+    <table>
+      <thead><tr><th>Item</th><th style="width:72px">Current</th><th style="width:72px">Projected</th><th style="width:64px">Delta</th></tr></thead>
+      <tbody>
+        <tr><td>Token Cost per Tailoring Session</td><td>$0.058</td><td>$0.029</td><td style="color:#2A7D2E;font-weight:600">-50%</td></tr>
+        <tr><td>Monthly Infrastructure (10K users)</td><td>$200</td><td>$450</td><td style="color:#C4952B;font-weight:600">+125%</td></tr>
+        <tr><td>Average Revenue per User (ARPU)</td><td>$0</td><td>$12</td><td style="color:#2A7D2E;font-weight:600">New revenue</td></tr>
+        <tr><td>Customer Lifetime Value (5mo avg)</td><td>$0</td><td>$60</td><td style="color:#2A7D2E;font-weight:600">New revenue</td></tr>
+      </tbody>
+    </table>
+    <div class="insight">
+      <div class="insight-label">Rollback Guarantee</div>
+      <p>All new features deployed behind feature flags (LaunchDarkly/GrowthBook) for instant rollback if error rates exceed 5% or token costs exceed budget. Maintain V1 pipeline as fallback with 24-hour switchover capability.</p>
+    </div>
+  </div>
+  <div class="pf"><span>Pre-RC Method Agent Output</span><span>4</span></div>
+</div>
+<!-- GOALS & USER STORIES (part 1) -->
+<div class="page">
+  <div class="ph"><div class="ph-l">PRD &mdash; Pre-RC Method Agent</div><div class="ph-r">Confidential</div></div>
+  <div class="pc">
+    <span class="sn">04</span>
+    <div class="st">Goals &amp; Success Measures</div>
+    <div class="sd"></div>
+    <table>
+      <thead><tr><th style="width:36px">#</th><th>Goal</th><th style="width:88px">Baseline</th><th style="width:88px">Target</th></tr></thead>
+      <tbody>
+        <tr><td><strong>G1</strong></td><td>Increase 30-day active user retention through ecosystem features</td><td>22% (v1)</td><td>45% via Chrome extension and job tracker integration</td></tr>
+        <tr><td><strong>G2</strong></td><td>Achieve 3x free-to-paid conversion rate</td><td>8%</td><td>24% by gating at 3 free tailors/month with clear upgrade value</td></tr>
+        <tr><td><strong>G3</strong></td><td>Reduce average diff review time via trust mechanisms</td><td>18 minutes</td><td>7 minutes via AI confidence scores and batch actions</td></tr>
+        <tr><td><strong>G4</strong></td><td>Grow cover letter generation adoption</td><td>12%</td><td>50% through discoverability improvements and matching PDF format</td></tr>
+        <tr><td><strong>G5</strong></td><td>Maintain cost efficiency despite new features</td><td>$0.058 per session</td><td>&lt;$0.50 through prompt caching and differential rewriting</td></tr>
+        <tr><td><strong>G6</strong></td><td>Achieve competitive NPS positioning</td><td>Unknown</td><td>50+ NPS (vs. Teal ~40, Jobscan ~35)</td></tr>
+      </tbody>
+    </table>
+    <span class="sn" style="margin-top:32px">05</span>
+    <div class="st">User Stories</div>
+    <div class="sd"></div>
+    <h3>Trust &amp; Quality Control</h3>
+    <table>
+      <thead><tr><th style="width:48px">ID</th><th style="width:240px">Story</th><th>Acceptance Criteria</th></tr></thead>
+      <tbody>
+        <tr><td>US-T1</td><td>As a Quality-Focused Professional, I want to see AI confidence scores for each bullet suggestion so that I can focus my review time only on low-confidence changes</td><td>Confidence percentages (70-99%) displayed as color-coded badges (green &gt;90%, yellow 70-89%, red &lt;70%) in diff review UI; derived from Stage 4 Sonnet validation</td></tr>
+        <tr><td>US-T2</td><td>As an Efficiency-Driven Applicant, I want to accept all high-confidence bullets with one click so that I can reduce my review time from 18 minutes to under 8 minutes</td><td>Batch action buttons above diff review: 'Accept all high-confidence (&gt;90%)', 'Accept all technical bullets', 'Reject all weak (&lt;70%)'; shift-click multi-select for custom batching</td></tr>
+        <tr><td>US-T3</td><td>As a Quality-Focused Professional, I want to preview template styles before uploading my resume so that I don't waste 30 minutes only to discover I dislike the output format</td><td>Stage 0 template gallery showing side-by-side previews of 5 LaTeX templates with sample data; user selects template before upload; selection stored in session</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Workflow Efficiency</h3>
+    <table>
+      <thead><tr><th style="width:48px">ID</th><th style="width:240px">Story</th><th>Acceptance Criteria</th></tr></thead>
+      <tbody>
+        <tr><td>US-W1</td><td>As an Efficiency-Driven Applicant, I want to tailor my resume directly from LinkedIn job postings so that I don't waste 4-6 minutes copying/pasting and switching tabs</td><td>Chrome extension auto-extracts JD from LinkedIn/Indeed/Greenhouse; pre-populates user's resume from Supabase; 'Tailor Now' button initiates Stage 1-4 pipeline; returns download link</td></tr>
+        <tr><td>US-W2</td><td>As an Efficiency-Driven Applicant, I want to track which tailored resume I sent to each company so that I don't lose versions after the 10-minute session expires</td><td>Job tracker dashboard with Kanban board (Applied/Interviewing/Offer/Rejected); each application links to exact tailored resume version; 'Save to Tracker' checkbox on download page</td></tr>
+        <tr><td>US-W3</td><td>As a Mid-Career Professional, I want my tailored resumes to persist beyond 10 minutes so that I can return to them days later without re-tailoring</td><td>Tailored resumes stored in Supabase user_resumes table (not Redis); accessible from dashboard; downloadable anytime within 90 days</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="pf"><span>Pre-RC Method Agent Output</span><span>5</span></div>
+</div>
+<!-- USER STORIES (part 2) + FEATURES -->
+<div class="page">
+  <div class="ph"><div class="ph-l">PRD &mdash; Pre-RC Method Agent</div><div class="ph-r">Confidential</div></div>
+  <div class="pc">
+    <h3>Complete Application Package</h3>
+    <table>
+      <thead><tr><th style="width:48px">ID</th><th style="width:240px">Story</th><th>Acceptance Criteria</th></tr></thead>
+      <tbody>
+        <tr><td>US-A1</td><td>As a Quality-Focused Professional, I want to generate a matching cover letter immediately after downloading my resume so that my application materials have consistent formatting</td><td>Post-download modal offers cover letter generation; uses same LaTeX template as resume; compiles to matching PDF; SSE streaming shows progress</td></tr>
+        <tr><td>US-A2</td><td>As a Quality-Focused Professional, I want my cover letter to use the same visual template as my resume so that my application package looks professionally cohesive</td><td>Stage 5 accepts template_id parameter; uses same LaTeX template as resume; compiled via tectonic with JSON output from Sonnet</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Monetization &amp; Value</h3>
+    <table>
+      <thead><tr><th style="width:48px">ID</th><th style="width:240px">Story</th><th>Acceptance Criteria</th></tr></thead>
+      <tbody>
+        <tr><td>US-M1</td><td>As a new user, I want to try 3 free tailoring sessions so that I can validate the tool's quality before paying</td><td>3 free tailors per calendar month; hard gate at limit requiring upgrade; rate limiting checks user_subscriptions.plan_type before Stage 1</td></tr>
+        <tr><td>US-M2</td><td>As a frequent job applicant, I want to upgrade to unlimited tailoring for less than competitors charge so that I get better value</td><td>Pro tier at $9.99/month (50 tailors) or Premium at $19.99/month (unlimited); upgrade modal at 3rd tailor with time-savings messaging; Stripe checkout integration</td></tr>
+        <tr><td>US-M3</td><td>As a paying user, I want to manage my subscription and billing so that I can update payment methods or cancel if needed</td><td>Stripe customer portal accessible from account settings; allows payment method updates, plan changes, and cancellation</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Secondary User Needs</h3>
+    <table>
+      <thead><tr><th style="width:48px">ID</th><th style="width:240px">Story</th><th>Acceptance Criteria</th></tr></thead>
+      <tbody>
+        <tr><td>US-S1</td><td>As a career changer from military to corporate, I want AI to translate my terminology so that hiring managers understand my transferable skills</td><td>Resume type selector includes 'Career Changer'; triggers Haiku pre-pass to map military/academic/freelance terms to industry equivalents before Stage 2</td></tr>
+        <tr><td>US-S2</td><td>As an international applicant, I want to toggle between US and UK resume conventions so that my application matches regional expectations</td><td>Locale toggle (US/UK/Canada/Australia) adjusts Stage 3 prompts for spelling, terminology, and LaTeX date formatting</td></tr>
+        <tr><td>US-S3</td><td>As an entry-level candidate, I want my education and projects highlighted so that I'm not penalized for lack of professional experience</td><td>Resume type selector includes 'Entry-Level'; Stage 2 weights 'foundational skills' over 'proven track record'; education-first template structure</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Premium Features</h3>
+    <table>
+      <thead><tr><th style="width:48px">ID</th><th style="width:240px">Story</th><th>Acceptance Criteria</th></tr></thead>
+      <tbody>
+        <tr><td>US-P1</td><td>As a Premium user preparing for interviews, I want AI-generated practice questions based on my tailored resume so that I can rehearse relevant answers</td><td>Interview prep mode generates 10-15 behavioral + technical questions using Haiku; questions tied to specific tailored resume + JD</td></tr>
+        <tr><td>US-P2</td><td>As a Premium user, I want feedback on my interview answers so that I can improve my responses before the actual interview</td><td>User submits text/audio answers; Sonnet evaluates against STAR framework; provides scored feedback (1-10) with improvement suggestions</td></tr>
+      </tbody>
+    </table>
+    <span class="sn" style="margin-top:32px">06</span>
+    <div class="st">Feature Prioritization</div>
+    <div class="sd"></div>
+    <table>
+      <thead><tr><th>Feature</th><th style="width:72px">Priority</th><th style="width:72px">Effort</th><th style="width:48px">Module</th></tr></thead>
+      <tbody>
+        <tr><td>AI Confidence Scores</td><td><span class="badge b-must">Must</span></td><td>Low</td><td>A - Trust Mechanisms</td></tr>
+        <tr><td>Batch Bullet Actions</td><td><span class="badge b-must">Must</span></td><td>Low</td><td>A - Trust Mechanisms</td></tr>
+        <tr><td>Template Preview Gallery</td><td><span class="badge b-must">Must</span></td><td>Medium</td><td>A - Trust Mechanisms</td></tr>
+        <tr><td>Stripe Freemium Implementation</td><td><span class="badge b-must">Must</span></td><td>Medium</td><td>B - Monetization</td></tr>
+        <tr><td>Cover Letter Discoverability Modal</td><td><span class="badge b-must">Must</span></td><td>Low</td><td>C - Application Package</td></tr>
+        <tr><td>LaTeX Cover Letter PDF</td><td><span class="badge b-must">Must</span></td><td>Medium</td><td>C - Application Package</td></tr>
+        <tr><td>Chrome Extension (Manifest V3)</td><td><span class="badge b-should">Should</span></td><td>High</td><td>D - Workflow Integration</td></tr>
+        <tr><td>Job Tracker with Kanban Board</td><td><span class="badge b-should">Should</span></td><td>Medium</td><td>D - Workflow Integration</td></tr>
+        <tr><td>Prompt Caching (Stage 1-2)</td><td><span class="badge b-must">Must</span></td><td>Medium</td><td>E - Cost Optimization</td></tr>
+        <tr><td>Differential Rewriting (Stage 3)</td><td><span class="badge b-must">Must</span></td><td>Medium</td><td>E - Cost Optimization</td></tr>
+        <tr><td>Token Usage Analytics</td><td><span class="badge b-must">Must</span></td><td>Low</td><td>E - Cost Optimization</td></tr>
+        <tr><td>Career Changer Terminology Mapping</td><td><span class="badge b-should">Should</span></td><td>Medium</td><td>F - Secondary Users</td></tr>
+        <tr><td>International Locale Toggle</td><td><span class="badge b-should">Should</span></td><td>Low</td><td>F - Secondary Users</td></tr>
+        <tr><td>Entry-Level Resume Optimization</td><td><span class="badge b-should">Should</span></td><td>Low</td><td>F - Secondary Users</td></tr>
+        <tr><td>Interview Prep Question Generation</td><td><span class="badge b-should">Could</span></td><td>High</td><td>G - Premium Features</td></tr>
+        <tr><td>Interview Answer Evaluation</td><td><span class="badge b-should">Could</span></td><td>High</td><td>G - Premium Features</td></tr>
+        <tr><td>Resume Persistence in Supabase</td><td><span class="badge b-must">Must</span></td><td>Low</td><td>D - Workflow Integration</td></tr>
+        <tr><td>5 LaTeX Template Designs</td><td><span class="badge b-must">Must</span></td><td>Medium</td><td>A - Trust Mechanisms</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="pf"><span>Pre-RC Method Agent Output</span><span>6</span></div>
+</div>
+<!-- FUNCTIONAL REQUIREMENTS (page 7) -->
+<div class="page">
+  <div class="ph"><div class="ph-l">PRD &mdash; Pre-RC Method Agent</div><div class="ph-r">Confidential</div></div>
+  <div class="pc">
+    <span class="sn">07</span>
+    <div class="st">Functional Requirements</div>
+    <div class="sd"></div>
+
+    <div class="mod-header">Module A: Trust Mechanisms</div>
+    <table>
+      <thead><tr><th style="width:72px">#</th><th>Requirement</th></tr></thead>
+      <tbody>
+        <tr><td>FR-A1</td><td>System shall display per-bullet confidence percentages (70-99%) derived from Stage 4 Sonnet validation in diff review UI</td></tr>
+        <tr><td>FR-A2</td><td>System shall color-code confidence badges: green for >90%, yellow for 70-89%, red for <70%</td></tr>
+        <tr><td>FR-A3</td><td>System shall provide batch action buttons: 'Accept all high-confidence (>90%)', 'Accept all technical bullets', 'Reject all weak (<70%)'</td></tr>
+        <tr><td>FR-A4</td><td>System shall support shift-click multi-select for custom batch bullet actions</td></tr>
+        <tr><td>FR-A5</td><td>System shall display template gallery with 5 LaTeX templates: Corporate, Tech, Executive, Entry-Level, Creative</td></tr>
+        <tr><td>FR-A6</td><td>System shall show side-by-side template previews using pre-generated static PNG thumbnails with sample data</td></tr>
+        <tr><td>FR-A7</td><td>System shall allow template selection before resume upload in Stage 0</td></tr>
+        <tr><td>FR-A8</td><td>System shall store selected template_id in Redis session and pass to LaTeX compiler at download</td></tr>
+      </tbody>
+    </table>
+
+    <div class="mod-header">Module B: Monetization</div>
+    <table>
+      <thead><tr><th style="width:72px">#</th><th>Requirement</th></tr></thead>
+      <tbody>
+        <tr><td>FR-B1</td><td>System shall enforce 3 free tailoring sessions per calendar month for non-paying users</td></tr>
+        <tr><td>FR-B2</td><td>System shall integrate Stripe Checkout for Pro tier ($9.99/month, 50 tailors) and Premium tier ($19.99/month, unlimited)</td></tr>
+        <tr><td>FR-B3</td><td>System shall implement webhook endpoint at /api/stripe/webhook to sync subscription status to Supabase user_subscriptions table</td></tr>
+        <tr><td>FR-B4</td><td>System shall display upgrade modal at 3rd tailor with messaging: 'You've saved 90 minutes this month—unlock unlimited for $9.99'</td></tr>
+        <tr><td>FR-B5</td><td>System shall check user_subscriptions.plan_type before allowing Stage 1 initiation via slowapi rate limiting</td></tr>
+        <tr><td>FR-B6</td><td>System shall provide Stripe customer portal for payment method updates, plan changes, and cancellation</td></tr>
+      </tbody>
+    </table>
+
+    <div class="mod-header">Module C: Application Package</div>
+    <table>
+      <thead><tr><th style="width:72px">#</th><th>Requirement</th></tr></thead>
+      <tbody>
+        <tr><td>FR-C1</td><td>System shall trigger cover letter generation modal immediately after resume download</td></tr>
+        <tr><td>FR-C2</td><td>System shall display modal with preview of cover letter template and 'Generate in 60 seconds' CTA</td></tr>
+        <tr><td>FR-C3</td><td>System shall enhance Stage 5 to accept template_id parameter and use same LaTeX template as resume</td></tr>
+        <tr><td>FR-C4</td><td>System shall compile cover letter PDF via tectonic with JSON output from Sonnet</td></tr>
+        <tr><td>FR-C5</td><td>System shall use SSE streaming to show cover letter generation progress: 'AI analyzing your resume', 'Writing introduction', 'Compiling PDF'</td></tr>
+      </tbody>
+    </table>
+
+    <div class="mod-header">Module D: Workflow Integration</div>
+    <table>
+      <thead><tr><th style="width:72px">#</th><th>Requirement</th></tr></thead>
+      <tbody>
+        <tr><td>FR-D1</td><td>Chrome extension shall auto-extract job descriptions from LinkedIn (div.jobs-description), Indeed (div#jobDescriptionText), and Greenhouse career pages</td></tr>
+        <tr><td>FR-D2</td><td>Chrome extension shall authenticate via Supabase OAuth flow and store session token in chrome.storage.local</td></tr>
+        <tr><td>FR-D3</td><td>Chrome extension shall fetch user's default resume from Supabase via GET /api/resumes/default</td></tr>
+        <tr><td>FR-D4</td><td>Chrome extension shall display 'Tailor Now' button that calls POST /api/extension/tailor with JD text + resume ID</td></tr>
+        <tr><td>FR-D5</td><td>System shall create Supabase tables: jobs (id, company, title, jd_text, url, created_at) and applications (id, user_id, job_id, resume_version_id, status, notes, applied_date)</td></tr>
+        <tr><td>FR-D6</td><td>System shall provide CRUD endpoints for jobs/applications: POST /api/jobs, PATCH /api/applications/{id}/status</td></tr>
+        <tr><td>FR-D7</td><td>System shall display job tracker dashboard with Kanban board view (Applied/Interviewing/Offer/Rejected columns)</td></tr>
+        <tr><td>FR-D8</td><td>System shall link each application to exact tailored resume version with download capability</td></tr>
+        <tr><td>FR-D9</td><td>System shall add 'Save to Tracker' checkbox on download page that auto-populates job details from Stage 2 JD analysis</td></tr>
+        <tr><td>FR-D10</td><td>System shall store tailored resumes in Supabase user_resumes table (not Redis) for 90-day persistence</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="pf"><span>Pre-RC Method Agent Output</span><span>7</span></div>
+</div>
+
+<!-- FUNCTIONAL REQUIREMENTS (page 8) -->
+<div class="page">
+  <div class="ph"><div class="ph-l">PRD &mdash; Pre-RC Method Agent</div><div class="ph-r">Confidential</div></div>
+  <div class="pc">
+    <div class="mod-header">Module E: Cost Optimization</div>
+    <table>
+      <thead><tr><th style="width:72px">#</th><th>Requirement</th></tr></thead>
+      <tbody>
+        <tr><td>FR-E1</td><td>System shall implement prompt caching for Stage 1 parsed resumes using Upstash Redis with 24-hour TTL</td></tr>
+        <tr><td>FR-E2</td><td>System shall implement prompt caching for Stage 2 JD analyses using Upstash Redis with 7-day TTL</td></tr>
+        <tr><td>FR-E3</td><td>System shall pre-score bullets with Haiku (2K tokens) in Stage 3 and only send <70% match bullets to Sonnet for rewriting</td></tr>
+        <tr><td>FR-E4</td><td>System shall consolidate multiple bullets into single Sonnet call in Stage 4 validation (batch validation)</td></tr>
+        <tr><td>FR-E5</td><td>System shall track token usage in Supabase table with per-stage, per-model cost attribution</td></tr>
+        <tr><td>FR-E6</td><td>System shall instrument 15 critical analytics events including stage completions, bullet actions, download clicks, and rate limit hits</td></tr>
+        <tr><td>FR-E7</td><td>System shall alert if average token cost per session exceeds $0.045 for 7 consecutive days</td></tr>
+      </tbody>
+    </table>
+
+    <div class="mod-header">Module F: Secondary User Support</div>
+    <table>
+      <thead><tr><th style="width:72px">#</th><th>Requirement</th></tr></thead>
+      <tbody>
+        <tr><td>FR-F1</td><td>System shall provide resume type selector with options: Standard, Career Changer, Entry-Level, Executive, International</td></tr>
+        <tr><td>FR-F2</td><td>System shall trigger Haiku pre-pass for Career Changer type to map military/academic/freelance terminology to industry equivalents before Stage 2</td></tr>
+        <tr><td>FR-F3</td><td>System shall provide locale toggle with options: US, UK, Canada, Australia</td></tr>
+        <tr><td>FR-F4</td><td>System shall adjust Stage 3 prompts based on locale for spelling (color/colour), terminology (CV vs resume), and date formatting</td></tr>
+        <tr><td>FR-F5</td><td>System shall weight 'foundational skills' keywords over 'proven track record' in Stage 2 for Entry-Level resume type</td></tr>
+        <tr><td>FR-F6</td><td>System shall promote education and projects in Stage 1 JSON parsing for Entry-Level resume type</td></tr>
+        <tr><td>FR-F7</td><td>System shall provide optional 'Must-Keep Terms' input field (5-10 terms) that Stage 3 preserves verbatim</td></tr>
+      </tbody>
+    </table>
+
+    <div class="mod-header">Module G: Premium Features</div>
+    <table>
+      <thead><tr><th style="width:72px">#</th><th>Requirement</th></tr></thead>
+      <tbody>
+        <tr><td>FR-G1</td><td>System shall generate 10-15 behavioral and technical interview questions using Haiku based on tailored resume + JD</td></tr>
+        <tr><td>FR-G2</td><td>System shall allow users to submit text or audio answers to interview questions</td></tr>
+        <tr><td>FR-G3</td><td>System shall evaluate answers using Sonnet against STAR framework</td></tr>
+        <tr><td>FR-G4</td><td>System shall provide scored feedback (1-10) with improvement suggestions for each answer</td></tr>
+        <tr><td>FR-G5</td><td>System shall store interview sessions in Supabase interview_sessions table for multi-day persistence</td></tr>
+        <tr><td>FR-G6</td><td>System shall gate interview prep behind Premium tier ($19.99/month) or $4.99 one-time add-on</td></tr>
+        <tr><td>FR-G7</td><td>System shall limit interview prep to 3 sessions per month on Pro tier</td></tr>
+      </tbody>
+    </table>
+
+    <div class="mod-header">Module H: Security &amp; Compliance</div>
+    <table>
+      <thead><tr><th style="width:72px">#</th><th>Requirement</th></tr></thead>
+      <tbody>
+        <tr><td>FR-H1</td><td>Chrome extension shall request only activeTab and storage permissions (not <all_urls>)</td></tr>
+        <tr><td>FR-H2</td><td>Chrome extension shall exchange Supabase session for 1-hour JWT from FastAPI, re-authenticating on expiry</td></tr>
+        <tr><td>FR-H3</td><td>System shall enforce 3 auto-tailors per hour rate limit via extension to prevent token abuse</td></tr>
+        <tr><td>FR-H4</td><td>System shall implement strict Content Security Policy headers to prevent XSS in extension popup</td></tr>
+        <tr><td>FR-H5</td><td>System shall alert on anomalous extension API usage (100+ requests/hour from single user)</td></tr>
+        <tr><td>FR-H6</td><td>System shall implement idempotent Stripe webhook handler using event IDs to prevent duplicate processing</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="pf"><span>Pre-RC Method Agent Output</span><span>8</span></div>
+</div>
+
+<!-- FUNCTIONAL REQUIREMENTS (page 9) -->
+<div class="page">
+  <div class="ph"><div class="ph-l">PRD &mdash; Pre-RC Method Agent</div><div class="ph-r">Confidential</div></div>
+  <div class="pc">
+    <div class="mod-header">Module I: Error Handling &amp; Reliability</div>
+    <table>
+      <thead><tr><th style="width:72px">#</th><th>Requirement</th></tr></thead>
+      <tbody>
+        <tr><td>FR-I1</td><td>System shall provide DOCX fallback if LaTeX compilation fails</td></tr>
+        <tr><td>FR-I2</td><td>System shall escape special LaTeX characters (\, {, }, %, &) in Stage 1 JSON output before template injection</td></tr>
+        <tr><td>FR-I3</td><td>System shall capture full LaTeX compilation logs in Supabase and create Slack alert for any failure</td></tr>
+        <tr><td>FR-I4</td><td>System shall display 'Download failed? Try DOCX format or contact support' message with 1-click error report</td></tr>
+        <tr><td>FR-I5</td><td>System shall deploy all new features behind feature flags for instant rollback if error rates exceed 5%</td></tr>
+        <tr><td>FR-I6</td><td>System shall maintain V1 pipeline as fallback with 24-hour switchover capability</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="pf"><span>Pre-RC Method Agent Output</span><span>9</span></div>
+</div>
+<!-- UX + RISK + METHODOLOGY -->
+<div class="page">
+  <div class="ph"><div class="ph-l">PRD &mdash; Pre-RC Method Agent</div><div class="ph-r">Confidential</div></div>
+  <div class="pc">
+    <span class="sn">08</span>
+    <div class="st">UX &amp; Design Considerations</div>
+    <div class="sd"></div>
+    <h3>Key UI Surfaces</h3>
+    <ol class="nlist">
+      <li><strong>Landing page with template gallery</strong></li>
+      <li><strong>Resume upload interface with template preview</strong></li>
+      <li><strong>Job description input (manual paste or extension auto-fill)</strong></li>
+      <li><strong>Diff review UI with confidence scores and batch actions</strong></li>
+      <li><strong>Download page with cover letter modal</strong></li>
+      <li><strong>Job tracker dashboard with Kanban board</strong></li>
+      <li><strong>Chrome extension popup</strong></li>
+      <li><strong>Account settings with subscription management</strong></li>
+      <li><strong>Interview prep interface (Premium)</strong></li>
+      <li><strong>Upgrade/paywall modals</strong></li>
+    </ol>
+    <h3>Critical User Flows</h3>
+    <div class="flow-box">
+      <div class="flow-title">Core Tailoring Flow (Web)</div>
+      User lands on homepage → Previews 5 templates in gallery → Selects template → Uploads resume (PDF/DOCX) → Pastes job description → System runs Stage 1-4 pipeline (90 sec) → Diff review UI shows bullets with confidence badges → User applies batch actions ('Accept all high-confidence') or individual edits → Downloads tailored resume PDF → Post-download modal offers cover letter generation → User opts in → Cover letter compiles in 30 sec → Downloads matching PDF
+    </div>
+    <div class="flow-box">
+      <div class="flow-title">Extension-Assisted Flow</div>
+      User browses LinkedIn job posting → Clicks 'Tailor with ResumeAI' extension button → Extension extracts JD, authenticates via Supabase → Popup shows user's default resume with 'Tailor Now' CTA → User clicks → Backend runs Stage 1-4 → Extension displays download link → User clicks 'Save to Tracker' → Job auto-added to dashboard with Applied status
+    </div>
+    <div class="flow-box">
+      <div class="flow-title">Freemium Conversion Flow</div>
+      New user completes 3 free tailoring sessions → Attempts 4th tailor → System displays upgrade modal: 'You've saved 90 minutes this month—unlock unlimited for $9.99' → User clicks 'Upgrade' → Stripe Checkout opens with Pro/Premium options → User completes payment → Webhook syncs subscription to Supabase → User redirected to dashboard with 'Pro' badge → Unlimited tailoring enabled
+    </div>
+    <div class="flow-box">
+      <div class="flow-title">Job Tracker Flow</div>
+      User downloads tailored resume → Checks 'Save to Tracker' → System creates job entry with company/title from Stage 2 analysis → User navigates to Tracker dashboard → Sees Kanban board with Applied column → Drags job card to Interviewing when scheduled → Clicks job card → Views linked resume version → Downloads exact PDF sent to company → Adds notes: 'Follow up on Friday'
+    </div>
+    <div class="flow-box">
+      <div class="flow-title">Interview Prep Flow (Premium)</div>
+      Premium user completes tailoring → Navigates to Interview Prep → Selects tailored resume + JD → System generates 10 questions via Haiku → User records/types answer to Q1 → Submits → Sonnet evaluates against STAR framework → Displays score (7/10) with feedback: 'Strong situation setup, but add quantified result' → User revises answer → Re-submits → Score improves to 9/10 → User proceeds to Q2
+    </div>
+    <span class="sn" style="margin-top:28px">09</span>
+    <div class="st">Risk Assessment</div>
+    <div class="sd"></div>
+    <table>
+      <thead><tr><th>Risk</th><th style="width:72px">Likelihood</th><th style="width:56px">Impact</th><th>Mitigation</th></tr></thead>
+      <tbody>
+        <tr><td>Token cost overruns destroy unit economics if caching hit rates &lt;30% or differential rewriting degrades quality</td><td>Medium</td><td>Critical</td><td>Run 200 test sessions pre-launch to validate 50-70% cost reduction; implement dynamic pricing adjustment to $14.99/mo if costs exceed $0.045/job; maintain kill switch to revert to V1 pipeline</td></tr>
+        <tr><td>Freemium cannibalization if users game system with multiple accounts or 3 free tailors satisfies 80%+ of use cases</td><td>Medium</td><td>High</td><td>A/B test 2 vs 3 free tailors/month; gate AI confidence scores and templates behind paid tiers; implement account abuse detection via IP/device fingerprinting; trigger upgrade prompts at tailor #2</td></tr>
+        <tr><td>Chrome extension security breach exposing user resumes (PII) or Supabase sessions to attackers</td><td>Low</td><td>Critical</td><td>Hire external penetration tester ($5K budget); request minimal permissions (activeTab, storage only); use 1-hour JWT tokens; implement strict CSP headers; rate limit to 3 auto-tailors/hour; monitor for anomalous API usage</td></tr>
+        <tr><td>LaTeX compilation failures block 10% of downloads due to edge cases (special characters, long bullets, malformed JSON)</td><td>Medium</td><td>High</td><td>Implement DOCX fallback if LaTeX fails; escape special characters in Stage 1 output; capture full compilation logs with Slack alerts; run 100 edge-case resumes through all templates weekly; provide 1-click error reporting</td></tr>
+        <tr><td>Interview prep mode has &lt;10% adoption despite 40%+ survey interest due to hypothetical bias</td><td>Medium</td><td>Medium</td><td>Require 40%+ 'definitely yes' in n=200 user survey before building; soft launch to Premium tier only; set kill criteria: if &lt;10% adoption in 30 days, sunset feature and reallocate tokens</td></tr>
+        <tr><td>Competitive response from Teal/Jobscan copying features or matching $9.99 pricing within 6 months</td><td>High</td><td>Medium</td><td>Ship Phase 1-2 in 8 weeks (faster than 12-16 week competitor cycles); emphasize 'Claude-powered accuracy' and 'no hallucinations' in marketing; build network effects via job tracker data lock-in; reserve 20% engineering for experimental features</td></tr>
+        <tr><td>Secondary user features (career changer, international, entry-level) add complexity that degrades core experience or increases latency &gt;110 seconds</td><td>Low</td><td>Medium</td><td>Maintain &lt;100 sec p95 latency performance budget; deploy behind separate feature flags for instant rollback; A/B test with 20% of users to measure stage completion rates vs control; simplify prompts if latency exceeds budget</td></tr>
+        <tr><td>Supabase cannot handle 10x user growth (10,000+ signups) causing database connection pool exhaustion or query latency spikes</td><td>Low</td><td>High</td><td>Load test with 10,000 concurrent sessions and 100 req/sec before launch; monitor connection pool usage and query latency; prepare 4-week migration plan to self-hosted PostgreSQL on AWS RDS if needed</td></tr>
+        <tr><td>Stripe webhook delivery failures cause subscription status desync (user pays but stays on free tier or vice versa)</td><td>Low</td><td>High</td><td>Implement idempotent webhook handler using event IDs; add retry logic with exponential backoff; run daily reconciliation job comparing Stripe API to Supabase; alert on &gt;5% desync rate; provide manual sync tool for support team</td></tr>
+        <tr><td>Template gallery doesn't drive upgrades if users satisfied with 1-2 templates or prefer Word formatting post-download</td><td>Medium</td><td>Low</td><td>Track template_previewed and template_regret events; if &lt;50% preview templates or regret rate &gt;10%, deprioritize template expansion in V3; accept as sunk cost (3 weeks effort)</td></tr>
+      </tbody>
+    </table>
+    <span class="sn" style="margin-top:28px">10</span>
+    <div class="st">Research Methodology</div>
+    <div class="sd"></div>
+    <div class="two-col">
+      <div class="col-block">
+        <div class="col-block-title">Research Scope</div>
+        <p>Pre-RC Research conducted by 18 specialized AI agents across 6 stages: (1) Meta architecture with Product Architect, Research Director, and Token Economics Optimizer; (2) User intelligence via Primary Archetype Researcher, Secondary User Analyst, and Demand-Side Theorist; (3) Market analysis by Competitive Intelligence Analyst; (4) Technical architecture by Systems Architect, AI/ML Specialist, and Data Strategist; (5) UX research by Cognitive Load Analyst and Content Strategist; (6) Validation by Coverage Auditor, Synthesis Specialist, and PRD Translator. Total research consumption: ~254K AI units across Claude, Gemini, and Perplexity models.</p>
+      </div>
+      <div class="col-block target">
+        <div class="col-block-title">Next Steps</div>
+        <p>This PRD represents Pre-RC output. Next phase: Feed into RC-Method rc_start → rc_define to refine requirements and create UX child PRD. Then rc_architect for technical architecture, rc_sequence for implementation roadmap, rc_forge for build execution, and rc_validate for quality gates and anti-pattern scanning. All phases use structured agent workflows with validation checkpoints.</p>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:40px;padding-top:20px;border-top:2px solid var(--navy);">
+      <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#999;margin-bottom:8px;">End of Document</div>
+      <div class="geo-bottom" style="justify-content:center;display:flex;"><span></span><span></span><span></span></div>
+    </div>
+  </div>
+  <div class="pf"><span>Pre-RC Method Agent Output</span><span>*</span></div>
+</div>
+<!-- RC METHOD METADATA -->
+<div class="page">
+  <div class="ph"><div class="ph-l">PRD &mdash; Pre-RC Method Agent</div><div class="ph-r">Confidential</div></div>
+  <div class="pc">
+    <span class="sn">11</span>
+    <div class="st">RC Method Metadata</div>
+    <div class="sd"></div>
+    <table>
+      <thead><tr><th>Field</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Phase</strong></td><td>Pre-RC Research Complete</td></tr>
+        <tr><td><strong>Gate Status</strong></td><td>Gate 3 Approved</td></tr>
+        <tr><td><strong>Research Artifacts</strong></td><td>18</td></tr>
+        <tr><td><strong>Personas</strong></td><td>18</td></tr>
+        <tr><td><strong>Token Count</strong></td><td>253,974</td></tr>
+      </tbody>
+    </table>
+    <div class="insight">
+      <div class="insight-label">Handoff Instructions</div>
+      <p>Feed this PRD into RC Method via rc_import_prerc(&quot;/Users/hareenedla/Hareen/resumeAI&quot;) or rc_start → rc_define. All 18 research specialist deliverables are available in pre-rc-research/.</p>
+    </div>
+  </div>
+  <div class="pf"><span>Pre-RC Method Agent Output</span><span>M</span></div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,254 @@
+import { X, Zap, Check, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { createRazorpaySubscription, verifyRazorpayPayment } from "../api/client";
+import { supabase } from "../lib/supabase";
+import type { User } from "@supabase/supabase-js";
+
+// Razorpay global type
+declare global {
+  interface Window {
+    Razorpay: new (options: Record<string, unknown>) => { open(): void };
+  }
+}
+
+interface Props {
+  reason: "tailor_limit" | "docx" | "cover_letter" | "history";
+  user: User | null;
+  onClose: () => void;
+  onSignIn: () => void;
+  onUpgradeSuccess?: () => void;
+}
+
+const REASON_COPY: Record<Props["reason"], { title: string; subtitle: string }> = {
+  tailor_limit: {
+    title: "You've used all 3 free tailors",
+    subtitle: "Upgrade to Pro for unlimited resume tailoring every month.",
+  },
+  docx: {
+    title: "DOCX download is a Pro feature",
+    subtitle: "Upgrade to Pro to download your resume as a Word document.",
+  },
+  cover_letter: {
+    title: "Cover letters are a Pro feature",
+    subtitle: "Upgrade to Pro to generate AI-powered cover letters.",
+  },
+  history: {
+    title: "Resume history is a Pro feature",
+    subtitle: "Upgrade to Pro to save and revisit all your tailored resumes.",
+  },
+};
+
+const PRO_FEATURES = [
+  "Unlimited tailors per month",
+  "PDF + DOCX download",
+  "Resume history & dashboard",
+  "AI cover letter generation",
+  "Priority processing",
+];
+
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (window.Razorpay) { resolve(true); return; }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
+
+export function UpgradeModal({ reason, user, onClose, onSignIn, onUpgradeSuccess }: Props) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  // Detect Indian locale → default INR
+  const defaultCurrency = navigator.language?.startsWith("en-IN") ? "INR" : "USD";
+  const [currency, setCurrency] = useState<"INR" | "USD">(defaultCurrency);
+  const copy = REASON_COPY[reason];
+
+  async function handleUpgrade() {
+    if (!user) { onClose(); onSignIn(); return; }
+    setLoading(true);
+    setError(null);
+
+    try {
+      const loaded = await loadRazorpayScript();
+      if (!loaded) throw new Error("Could not load payment SDK. Please try again.");
+
+      const { subscription_id, key_id } = await createRazorpaySubscription(user.id, currency, user.email ?? undefined);
+
+      await new Promise<void>((resolve, reject) => {
+        const rzp = new window.Razorpay({
+          key: key_id,
+          subscription_id,
+          name: "ResumeAI",
+          description: "Pro Monthly Subscription",
+          currency,
+          prefill: { email: user.email ?? "" },
+          theme: { color: "#ccff00" },
+          modal: { ondismiss: () => reject(new Error("dismissed")) },
+          handler: async (response: {
+            razorpay_payment_id: string;
+            razorpay_subscription_id: string;
+            razorpay_signature: string;
+          }) => {
+            try {
+              const { data: { session } } = await supabase.auth.getSession();
+              await verifyRazorpayPayment({
+                user_id: user.id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_subscription_id: response.razorpay_subscription_id,
+                razorpay_signature: response.razorpay_signature,
+              }, session?.access_token ?? "");
+              resolve();
+            } catch (e) {
+              reject(e);
+            }
+          },
+        });
+        rzp.open();
+      });
+
+      setSuccess(true);
+      onUpgradeSuccess?.();
+    } catch (e) {
+      if (e instanceof Error && e.message === "dismissed") {
+        // User closed popup — not an error
+      } else {
+        setError(e instanceof Error ? e.message : "Something went wrong. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Upgrade to Pro"
+      style={{
+        position: "fixed", inset: 0, zIndex: 50,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)",
+        padding: "1rem",
+      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div style={{
+        width: "100%", maxWidth: 420,
+        background: "#0c0c0c",
+        border: "1px solid rgba(255,255,255,0.1)",
+        borderRadius: "1.5rem",
+        padding: "2rem",
+        position: "relative",
+      }}>
+        {/* Close */}
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          style={{ position: "absolute", top: "1rem", right: "1rem", background: "transparent", border: "none", color: "rgba(235,235,235,0.3)", cursor: "pointer", display: "flex", alignItems: "center" }}
+        >
+          <X size={18} />
+        </button>
+
+        {success ? (
+          /* Success state */
+          <div style={{ textAlign: "center", padding: "1rem 0" }}>
+            <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(204,255,0,0.12)", border: "1px solid rgba(204,255,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.25rem" }}>
+              <Check size={22} style={{ color: "var(--lime)" }} />
+            </div>
+            <h2 style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--white-primary)", marginBottom: "0.5rem" }}>
+              You're Pro now!
+            </h2>
+            <p style={{ fontSize: 14, color: "rgba(235,235,235,0.5)", marginBottom: "1.5rem", lineHeight: 1.55 }}>
+              Your subscription is active. Reload the page to access all Pro features.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="neon-btn"
+              style={{ padding: "0.75rem 1.5rem", fontSize: 14, animation: "none" }}
+            >
+              Reload now →
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Icon */}
+            <div style={{ width: 44, height: 44, borderRadius: "50%", background: "rgba(204,255,0,0.1)", border: "1px solid rgba(204,255,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1.25rem" }}>
+              <Zap size={20} style={{ color: "var(--lime)" }} />
+            </div>
+
+            {/* Heading */}
+            <h2 style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--white-primary)", marginBottom: "0.5rem", letterSpacing: "-0.01em" }}>
+              {copy.title}
+            </h2>
+            <p style={{ fontSize: 14, color: "rgba(235,235,235,0.5)", marginBottom: "1.5rem", lineHeight: 1.55 }}>
+              {copy.subtitle}
+            </p>
+
+            {/* Features */}
+            <div style={{ marginBottom: "1.5rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              {PRO_FEATURES.map((f) => (
+                <div key={f} style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+                  <Check size={13} style={{ color: "var(--lime)", flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, color: "rgba(235,235,235,0.7)" }}>{f}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Currency toggle + Price */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: "0.25rem" }}>
+                <span style={{ fontSize: "2rem", fontWeight: 700, color: "var(--white-primary)", letterSpacing: "-0.03em" }}>
+                  {currency === "INR" ? "₹749" : "$9"}
+                </span>
+                <span style={{ fontSize: 14, color: "rgba(235,235,235,0.4)" }}>/month</span>
+              </div>
+              <div style={{ display: "flex", borderRadius: 9999, border: "1px solid rgba(255,255,255,0.1)", overflow: "hidden" }}>
+                {(["INR", "USD"] as const).map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setCurrency(c)}
+                    style={{
+                      padding: "0.3rem 0.75rem",
+                      border: "none",
+                      background: currency === c ? "rgba(204,255,0,0.15)" : "transparent",
+                      color: currency === c ? "var(--lime)" : "rgba(235,235,235,0.4)",
+                      fontSize: 12, fontWeight: 700, cursor: "pointer",
+                      fontFamily: "'Space Grotesk', sans-serif",
+                      transition: "background 0.15s, color 0.15s",
+                    }}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {error && (
+              <p style={{ fontSize: 12, color: "#f87171", marginBottom: "1rem" }}>{error}</p>
+            )}
+
+            {/* CTA */}
+            <button
+              onClick={handleUpgrade}
+              disabled={loading}
+              className="neon-btn"
+              style={{ width: "100%", padding: "0.75rem", fontSize: 14, animation: "none", opacity: loading ? 0.7 : 1, cursor: loading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}
+            >
+              {loading
+                ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Opening payment…</>
+                : user ? "Start Pro →" : "Sign in to upgrade →"}
+            </button>
+
+            <p style={{ marginTop: "0.875rem", fontSize: 12, color: "rgba(235,235,235,0.25)", textAlign: "center" }}>
+              Cancel anytime. No hidden fees.
+            </p>
+          </>
+        )}
+      </div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
