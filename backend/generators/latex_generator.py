@@ -1,6 +1,6 @@
 """
-LaTeX resume generator — Jake's Resume format.
-Renders structured resume data into a Jake's-style LaTeX document and compiles via tectonic.
+LaTeX resume generator — mirrors the DOCX generator structure exactly.
+Centered header, ruled uppercase section headers, two-column entry lines, bullet lists.
 """
 
 import os
@@ -60,50 +60,82 @@ def _apply_bullets(resume_structured: dict, accepted_bullets: Dict[str, str]) ->
 
 
 # ---------------------------------------------------------------------------
-# Section renderers — Jake's Resume macros
+# Entry field extractor (mirrors docx_generator._get_entry_fields)
+# ---------------------------------------------------------------------------
+
+def _get_entry_fields(entry: dict) -> dict:
+    company = entry.get("company", "")
+    role = entry.get("role", "")
+    location = entry.get("location", "")
+    dates = entry.get("dates", "")
+
+    if not company:
+        header = entry.get("header", "")
+        lines = [l.strip() for l in header.split("\n") if l.strip()]
+        company = lines[0] if lines else header
+        role = role or (lines[1] if len(lines) > 1 else "")
+
+    return {"company": company, "role": role, "location": location, "dates": dates}
+
+
+# ---------------------------------------------------------------------------
+# Section renderers — match DOCX structure exactly
 # ---------------------------------------------------------------------------
 
 def _render_header(resume: dict) -> str:
     name = _esc(resume.get("name", ""))
+    title = _esc(resume.get("title", ""))
     contact = resume.get("contact", {})
-    email = contact.get("email", "")
-    phone = _esc(contact.get("phone", ""))
     location = _esc(contact.get("location", ""))
+    phone = _esc(contact.get("phone", ""))
+    email = contact.get("email", "")
     linkedin = contact.get("linkedin", "")
     github = contact.get("github", "")
     portfolio = contact.get("portfolio", "")
 
-    # Build contact pipe-separated line
-    parts = []
+    lines = [r"\begin{center}"]
+
+    # Name — large bold (matches DOCX 18pt bold)
+    lines.append(r"    {\Large \textbf{" + name + r"}} \\[2pt]")
+
+    # Title line (matches DOCX title_line)
+    if title:
+        lines.append(r"    " + title + r" \\[1pt]")
+
+    # Location (matches DOCX location line)
+    if location:
+        lines.append(r"    " + location + r" \\[1pt]")
+
+    # Contact: phone | email | linkedin (pipe-separated, matches DOCX)
+    contact_parts = []
     if phone:
-        parts.append(phone)
+        contact_parts.append(phone)
     if email:
-        parts.append(
+        contact_parts.append(
             r"\href{mailto:" + _esc_url(email) + r"}{\underline{" + _esc(email) + r"}}"
         )
     if linkedin:
         url = linkedin if linkedin.startswith("http") else "https://" + linkedin
         display = linkedin.replace("https://", "").replace("http://", "")
-        parts.append(r"\href{" + _esc_url(url) + r"}{\underline{" + _esc(display) + r"}}")
+        contact_parts.append(
+            r"\href{" + _esc_url(url) + r"}{\underline{" + _esc(display) + r"}}"
+        )
     if github:
         url = github if github.startswith("http") else "https://" + github
         display = github.replace("https://", "").replace("http://", "")
-        parts.append(r"\href{" + _esc_url(url) + r"}{\underline{" + _esc(display) + r"}}")
+        contact_parts.append(
+            r"\href{" + _esc_url(url) + r"}{\underline{" + _esc(display) + r"}}"
+        )
     if portfolio:
         url = portfolio if portfolio.startswith("http") else "https://" + portfolio
         display = portfolio.replace("https://", "").replace("http://", "")
-        parts.append(r"\href{" + _esc_url(url) + r"}{\underline{" + _esc(display) + r"}}")
+        contact_parts.append(
+            r"\href{" + _esc_url(url) + r"}{\underline{" + _esc(display) + r"}}"
+        )
 
-    contact_line = r" $|$ ".join(parts)
+    if contact_parts:
+        lines.append(r"    \small " + r" $|$ ".join(contact_parts) + r" \\")
 
-    lines = [
-        r"\begin{center}",
-        r"    {\Huge \scshape " + name + r"} \\ \vspace{1pt}",
-    ]
-    if location:
-        lines.append(r"    \small " + location + r" $|$ " + contact_line + r" \\")
-    elif contact_line:
-        lines.append(r"    \small " + contact_line + r" \\")
     lines.append(r"\end{center}")
     return "\n".join(lines)
 
@@ -113,125 +145,110 @@ def _render_summary(resume: dict) -> str:
     if not summary:
         return ""
     return "\n".join([
-        r"\section{Summary}",
+        r"\section{PROFESSIONAL SUMMARY}",
         r"\small " + _esc(summary),
     ])
 
 
-def _get_entry_fields(entry: dict) -> dict:
-    company = entry.get("company", "")
-    role = entry.get("role", "")
-    location = entry.get("location", "")
-    dates = entry.get("dates", "")
+def _render_two_col(left: str, right: str, left_fmt: str = "bold") -> str:
+    """Render a line with left text and right-aligned text (mirrors DOCX _add_two_column_line)."""
+    if left_fmt == "bold":
+        left_tex = r"\textbf{" + left + r"}"
+    elif left_fmt == "italic":
+        left_tex = r"\textit{\small " + left + r"}"
+    else:
+        left_tex = left
 
-    if not company:
-        header_parts = _parse_entry_header(entry.get("header", ""))
-        company = header_parts.get("company", entry.get("header", ""))
-        role = role or header_parts.get("role", "")
-        location = location or header_parts.get("location", "")
-        dates = dates or header_parts.get("dates", "")
-
-    return {"company": company, "role": role, "location": location, "dates": dates}
+    if right:
+        return left_tex + r" \hfill " + right + r" \\"
+    return left_tex + r" \\"
 
 
 def _render_experience(section: dict) -> str:
-    lines = [
-        r"\section{Experience}",
-        r"  \resumeSubHeadingListStart",
-        r"",
-    ]
+    lines = [r"\section{WORK EXPERIENCE}", ""]
     for entry in section.get("entries", []):
         fields = _get_entry_fields(entry)
         company = _esc(fields["company"])
         role = _esc(fields["role"])
-        dates = _esc(fields["dates"])
         location = _esc(fields["location"])
+        dates = _esc(fields["dates"])
 
-        lines.append(
-            r"    \resumeSubheading"
-            + "\n      {" + company + "}{" + dates + "}"
-            + "\n      {" + role + "}{" + location + "}"
-        )
+        # Company bold + location right (matches DOCX)
+        lines.append(_render_two_col(company, location, left_fmt="bold"))
 
+        # Role italic + dates right (matches DOCX)
+        if role or dates:
+            lines.append(_render_two_col(role, dates, left_fmt="italic"))
+
+        # Bullets
         bullets = [b for b in entry.get("bullets", []) if b.get("text", "").strip()]
         if bullets:
-            lines.append(r"      \resumeItemListStart")
+            lines.append(r"\begin{itemize}")
             for b in bullets:
-                lines.append(r"        \resumeItem{" + _esc(b["text"].strip()) + "}")
-            lines.append(r"      \resumeItemListEnd")
+                lines.append(r"    \item " + _esc(b["text"].strip()))
+            lines.append(r"\end{itemize}")
+
         lines.append("")
 
-    lines.append(r"  \resumeSubHeadingListEnd")
     return "\n".join(lines)
 
 
 def _render_education(section: dict) -> str:
-    lines = [
-        r"\section{Education}",
-        r"  \resumeSubHeadingListStart",
-        r"",
-    ]
+    lines = [r"\section{EDUCATION}", ""]
     for entry in section.get("entries", []):
         fields = _get_entry_fields(entry)
         school = _esc(fields["company"])
         degree = _esc(fields["role"])
         dates = _esc(fields["dates"])
-        location = _esc(fields["location"])
 
-        lines.append(
-            r"    \resumeSubheading"
-            + "\n      {" + school + "}{" + dates + "}"
-            + "\n      {" + degree + "}{" + location + "}"
-        )
+        # School bold + dates right (matches DOCX)
+        lines.append(_render_two_col(school, dates, left_fmt="bold"))
 
-        # Extra info lines (GPA, coursework etc.) as plain text bullets
+        if degree:
+            lines.append(degree + r" \\")
+
         for b in entry.get("bullets", []):
             text = b.get("text", "").strip()
             if text:
-                lines.append(r"      \resumeItemListStart")
-                lines.append(r"        \resumeItem{" + _esc(text) + "}")
-                lines.append(r"      \resumeItemListEnd")
+                lines.append(_esc(text) + r" \\")
+
         lines.append("")
 
-    lines.append(r"  \resumeSubHeadingListEnd")
     return "\n".join(lines)
 
 
 def _render_projects(section: dict) -> str:
-    lines = [
-        r"\section{Projects}",
-        r"    \resumeSubHeadingListStart",
-        r"",
-    ]
+    lines = [r"\section{PROJECTS}", ""]
     for entry in section.get("entries", []):
         fields = _get_entry_fields(entry)
         name = _esc(fields["company"] or entry.get("header", ""))
-        # role field often holds tech stack for project entries
-        stack = fields["role"]
+        stack = _esc(fields["role"])
         dates = _esc(fields["dates"])
 
         if stack:
-            heading = r"\textbf{" + name + r"} $|$ \emph{" + _esc(stack) + r"}"
+            left = r"\textbf{" + name + r"} $|$ \textit{" + stack + r"}"
         else:
-            heading = r"\textbf{" + name + r"}"
+            left = r"\textbf{" + name + r"}"
 
-        lines.append(r"      \resumeProjectHeading")
-        lines.append(r"          {" + heading + "}{" + dates + "}")
+        if dates:
+            lines.append(left + r" \hfill " + dates + r" \\")
+        else:
+            lines.append(left + r" \\")
 
         bullets = [b for b in entry.get("bullets", []) if b.get("text", "").strip()]
         if bullets:
-            lines.append(r"          \resumeItemListStart")
+            lines.append(r"\begin{itemize}")
             for b in bullets:
-                lines.append(r"            \resumeItem{" + _esc(b["text"].strip()) + "}")
-            lines.append(r"          \resumeItemListEnd")
+                lines.append(r"    \item " + _esc(b["text"].strip()))
+            lines.append(r"\end{itemize}")
+
         lines.append("")
 
-    lines.append(r"    \resumeSubHeadingListEnd")
     return "\n".join(lines)
 
 
 def _render_skills(section: dict) -> str:
-    skill_lines = []
+    lines = [r"\section{TECHNICAL SKILLS}", ""]
     for entry in section.get("entries", []):
         for b in entry.get("bullets", []):
             text = b.get("text", "").strip()
@@ -239,43 +256,30 @@ def _render_skills(section: dict) -> str:
                 continue
             if ":" in text:
                 cat, _, items = text.partition(":")
-                skill_lines.append(
-                    r"     \textbf{" + _esc(cat.strip()) + r"}{: " + _esc(items.strip()) + r"} \\"
+                lines.append(
+                    r"\textbf{" + _esc(cat.strip()) + r":} " + _esc(items.strip()) + r" \\"
                 )
             else:
-                skill_lines.append(_esc(text) + r" \\")
+                lines.append(_esc(text) + r" \\")
 
         if not entry.get("bullets"):
             header = (entry.get("header", "") or entry.get("company", "")).strip()
             if header:
                 if ":" in header:
                     cat, _, items = header.partition(":")
-                    skill_lines.append(
-                        r"     \textbf{" + _esc(cat.strip()) + r"}{: " + _esc(items.strip()) + r"} \\"
+                    lines.append(
+                        r"\textbf{" + _esc(cat.strip()) + r":} " + _esc(items.strip()) + r" \\"
                     )
                 else:
-                    skill_lines.append(_esc(header) + r" \\")
+                    lines.append(_esc(header) + r" \\")
 
-    if not skill_lines:
-        return ""
-
-    lines = [
-        r"\section{Technical Skills}",
-        r" \begin{itemize}[leftmargin=0.15in, label={}]",
-        r"    \small{\item{",
-    ]
-    lines += skill_lines
-    lines += [
-        r"    }}",
-        r" \end{itemize}",
-    ]
     return "\n".join(lines)
 
 
 def _render_certifications(section: dict) -> str:
     certs = []
     for entry in section.get("entries", []):
-        header = (entry.get("header", "") or entry.get("company", "")).strip()
+        header = (entry.get("company", "") or entry.get("header", "")).strip()
         if header:
             certs.append(_esc(header))
         for b in entry.get("bullets", []):
@@ -287,174 +291,57 @@ def _render_certifications(section: dict) -> str:
         return ""
 
     return "\n".join([
-        r"\section{Certifications}",
+        r"\section{CERTIFICATIONS}",
         ", ".join(certs),
     ])
 
 
 def _render_generic_section(section: dict) -> str:
-    title = _esc(section.get("title", "Section"))
-    lines = [
-        r"\section{" + title + r"}",
-        r"  \resumeSubHeadingListStart",
-        r"",
-    ]
+    title = _esc(section.get("title", "Section")).upper()
+    lines = [r"\section{" + title + r"}", ""]
     for entry in section.get("entries", []):
         header = (entry.get("header", "") or entry.get("company", "")).strip()
         if header:
-            lines.append(r"    \item \textbf{" + _esc(header) + r"}")
+            lines.append(r"\textbf{" + _esc(header) + r"} \\")
 
         bullets = [b for b in entry.get("bullets", []) if b.get("text", "").strip()]
         if bullets:
-            lines.append(r"      \resumeItemListStart")
+            lines.append(r"\begin{itemize}")
             for b in bullets:
-                lines.append(r"        \resumeItem{" + _esc(b["text"].strip()) + "}")
-            lines.append(r"      \resumeItemListEnd")
+                lines.append(r"    \item " + _esc(b["text"].strip()))
+            lines.append(r"\end{itemize}")
+
         lines.append("")
 
-    lines.append(r"  \resumeSubHeadingListEnd")
     return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
-# Entry header parser
+# LaTeX preamble — matches DOCX margins and style
 # ---------------------------------------------------------------------------
 
-def _parse_entry_header(header: str) -> dict:
-    if not header:
-        return {}
+LATEX_PREAMBLE = r"""\documentclass[10pt,letterpaper]{article}
 
-    lines = [l.strip() for l in header.split("\n") if l.strip()]
-    if len(lines) >= 2:
-        company_part = lines[0]
-        role_part = lines[1] if len(lines) > 1 else ""
-        dates_part = lines[2] if len(lines) > 2 else ""
-        company, location = _split_company_location(company_part)
-        role, dates = _split_role_dates(role_part)
-        if not dates and dates_part:
-            dates = dates_part
-        return {"company": company, "role": role, "dates": dates, "location": location}
-
-    for sep in ["|", "•", "–", "-"]:
-        if sep in header:
-            parts = [p.strip() for p in header.split(sep)]
-            if len(parts) >= 2:
-                company, location = _split_company_location(parts[0])
-                role = parts[1] if len(parts) > 1 else ""
-                dates = parts[2] if len(parts) > 2 else ""
-                return {"company": company, "role": role, "dates": dates, "location": location}
-
-    return {"company": header.strip()}
-
-
-def _split_company_location(text: str) -> tuple:
-    location_pattern = re.compile(
-        r",?\s*([A-Z][a-z]+(?: [A-Z][a-z]+)?,\s*(?:[A-Z]{2}|United States|India|Canada|UK))\s*$"
-    )
-    m = location_pattern.search(text)
-    if m:
-        location = m.group(1).strip()
-        company = text[: m.start()].strip().rstrip(",").strip()
-        return company, location
-    return text.strip(), ""
-
-
-def _split_role_dates(text: str) -> tuple:
-    date_pattern = re.compile(
-        r"\s+((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|January|February|March|April|June|July|August|September|October|November|December)\w*\.?\s+\d{4}.*|(?:\d{4}\s*[-–]\s*(?:\d{4}|Present|present|Current|current)))"
-    )
-    m = date_pattern.search(text)
-    if m:
-        role = text[: m.start()].strip()
-        dates = m.group(1).strip()
-        return role, dates
-    return text.strip(), ""
-
-
-# ---------------------------------------------------------------------------
-# Jake's Resume preamble
-# ---------------------------------------------------------------------------
-
-LATEX_PREAMBLE = r"""\documentclass[letterpaper,11pt]{article}
-
-\usepackage{latexsym}
-\usepackage[empty]{fullpage}
+\usepackage[top=0.5in,bottom=0.5in,left=0.5in,right=0.5in]{geometry}
 \usepackage{titlesec}
-\usepackage{marvosym}
-\usepackage[usenames,dvipsnames]{color}
-\usepackage{verbatim}
 \usepackage{enumitem}
 \usepackage[hidelinks]{hyperref}
-\usepackage{fancyhdr}
-\usepackage[english]{babel}
-\usepackage{tabularx}
+\usepackage{parskip}
 
-\pagestyle{fancy}
-\fancyhf{}
-\fancyfoot{}
-\renewcommand{\headrulewidth}{0pt}
-\renewcommand{\footrulewidth}{0pt}
+\pagenumbering{gobble}
 
-\addtolength{\oddsidemargin}{-0.5in}
-\addtolength{\evensidemargin}{-0.5in}
-\addtolength{\textwidth}{1in}
-\addtolength{\topmargin}{-.5in}
-\addtolength{\textheight}{1.0in}
+% Section heading: bold uppercase with bottom rule (matches DOCX _add_section_header)
+\setcounter{secnumdepth}{0}
+\titleformat{\section}{\bfseries\normalsize}{}{0em}{\MakeUppercase}[\vspace{-4pt}\rule{\linewidth}{0.4pt}]
+\titlespacing*{\section}{0pt}{8pt}{4pt}
 
-\urlstyle{same}
-\raggedbottom
-\raggedright
-\setlength{\tabcolsep}{0in}
-
-% Section heading: small-caps, left-aligned, followed by titlerule
-\titleformat{\section}{
-  \vspace{-4pt}\scshape\raggedright\large
-}{}{0em}{}[\color{black}\titlerule \vspace{-5pt}]
-
-%-------------------------
-% Custom commands
-\newcommand{\resumeItem}[1]{
-  \item\small{
-    {#1 \vspace{-2pt}}
-  }
-}
-
-\newcommand{\resumeSubheading}[4]{
-  \vspace{-2pt}\item
-    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
-      \textbf{#1} & #2 \\
-      \textit{\small#3} & \textit{\small #4} \\
-    \end{tabular*}\vspace{-7pt}
-}
-
-\newcommand{\resumeSubSubheading}[2]{
-    \item
-    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
-      \textit{\small#1} & \textit{\small #2} \\
-    \end{tabular*}\vspace{-7pt}
-}
-
-\newcommand{\resumeProjectHeading}[2]{
-    \item
-    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
-      \small#1 & #2 \\
-    \end{tabular*}\vspace{-7pt}
-}
-
-\newcommand{\resumeSubItem}[1]{\resumeItem{#1}\vspace{-4pt}}
-
-\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
-
-\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
-\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
-\newcommand{\resumeItemListStart}{\begin{itemize}}
-\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
-%-------------------------------------------
+% Tight bullets matching DOCX List Bullet style
+\setlist[itemize]{noitemsep, topsep=2pt, leftmargin=0.2in, label=\textbullet}
 
 \begin{document}
 """
 
-LATEX_POSTAMBLE = "\n%-------------------------------------------\n\\end{document}\n"
+LATEX_POSTAMBLE = "\n\\end{document}\n"
 
 
 # ---------------------------------------------------------------------------
@@ -509,7 +396,7 @@ def build_latex(resume: dict) -> str:
 def compile_latex_to_pdf(latex_source: str) -> bytes:
     tectonic_path = (
         shutil.which("tectonic")
-        or "/usr/local/bin/tectonic"   # Render (Linux)
+        or "/usr/local/bin/tectonic"    # Render (Linux)
         or "/opt/homebrew/bin/tectonic"  # macOS (local dev)
     )
     if not tectonic_path or not os.path.exists(tectonic_path):
