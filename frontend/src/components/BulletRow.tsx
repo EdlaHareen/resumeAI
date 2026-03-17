@@ -13,7 +13,7 @@ function highlightKeywords(
   const pattern = new RegExp(`(${escaped.join("|")})`, "gi");
   const parts = text.split(pattern);
   return parts.map((part, i) => {
-    const isInjected = injectedKeywords.some((k) => k.toLowerCase() === part.toLowerCase());
+    const isInjected = (injectedKeywords ?? []).some((k) => k.toLowerCase() === part.toLowerCase());
     const isKeyword = !isInjected && keywords.some((k) => k.toLowerCase() === part.toLowerCase());
     if (isInjected) {
       return (
