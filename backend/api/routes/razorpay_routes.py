@@ -59,7 +59,12 @@ class SubscribeRequest(BaseModel):
 
 
 @router.post("/razorpay/subscribe")
-async def create_subscription(req: SubscribeRequest):
+async def create_subscription(req: SubscribeRequest, authorization: Optional[str] = Header(None)):
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authorization header required.")
+    verified_user_id = await asyncio.to_thread(auth_utils.verify_token, authorization)
+    if verified_user_id != req.user_id:
+        raise HTTPException(status_code=403, detail="user_id does not match authenticated user.")
     if not _KEY_ID or not _KEY_SECRET:
         raise HTTPException(status_code=500, detail="Razorpay is not configured.")
     plan_id = _PLAN_USD if req.currency.upper() == "USD" else _PLAN_INR

@@ -75,7 +75,9 @@ export function UpgradeModal({ reason, user, onClose, onSignIn, onUpgradeSuccess
       const loaded = await loadRazorpayScript();
       if (!loaded) throw new Error("Could not load payment SDK. Please try again.");
 
-      const { subscription_id, key_id } = await createRazorpaySubscription(user.id, currency, user.email ?? undefined);
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token ?? "";
+      const { subscription_id, key_id } = await createRazorpaySubscription(user.id, currency, accessToken, user.email ?? undefined);
 
       await new Promise<void>((resolve, reject) => {
         const rzp = new window.Razorpay({
@@ -93,13 +95,12 @@ export function UpgradeModal({ reason, user, onClose, onSignIn, onUpgradeSuccess
             razorpay_signature: string;
           }) => {
             try {
-              const { data: { session } } = await supabase.auth.getSession();
               await verifyRazorpayPayment({
                 user_id: user.id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_subscription_id: response.razorpay_subscription_id,
                 razorpay_signature: response.razorpay_signature,
-              }, session?.access_token ?? "");
+              }, accessToken);
               resolve();
             } catch (e) {
               reject(e);
@@ -165,11 +166,11 @@ export function UpgradeModal({ reason, user, onClose, onSignIn, onUpgradeSuccess
               Your subscription is active. Reload the page to access all Pro features.
             </p>
             <button
-              onClick={() => window.location.reload()}
+              onClick={onClose}
               className="neon-btn"
               style={{ padding: "0.75rem 1.5rem", fontSize: 14, animation: "none" }}
             >
-              Reload now →
+              Continue →
             </button>
           </div>
         ) : (

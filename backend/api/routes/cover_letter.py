@@ -1,6 +1,7 @@
+import asyncio
 import json
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import BaseModel
 from ai.client import call_llm_async
@@ -11,6 +12,8 @@ from generators.cover_letter_generator import (
     generate_cover_letter_pdf_from_text,
 )
 from limiter import limiter
+import utils.auth as auth_utils
+import utils.subscription_store as sub_store
 
 router = APIRouter()
 
@@ -77,12 +80,31 @@ def _parse_json_response(text: str) -> dict:
     return obj
 
 
+async def _require_pro(authorization: Optional[str]) -> None:
+    """Raise 403 if the user is not on a Pro tier. No-ops if Supabase is not configured (dev mode)."""
+    if not sub_store._URL:
+        return  # Supabase not configured — skip gate in dev
+    if not authorization:
+        raise HTTPException(status_code=401, detail={"code": "unauthorized", "message": "Sign in required."})
+    try:
+        user_id = await asyncio.to_thread(auth_utils.verify_token, authorization)
+        tier = await asyncio.to_thread(sub_store.get_tier, user_id)
+    except HTTPException:
+        raise
+    except Exception:
+        return  # auth service unreachable — allow through
+    if tier != "pro":
+        raise HTTPException(status_code=403, detail={"code": "upgrade_required", "message": "Cover letter generation is a Pro feature."})
+
+
 @router.post("/cover-letter", response_model=CoverLetterResponse)
 @limiter.limit("5/minute")
 async def generate_cover_letter_route(
     request: Request,
     req: CoverLetterRequest,
+    authorization: Optional[str] = Header(None),
 ) -> CoverLetterResponse:
+    await _require_pro(authorization)
     prompt = STAGE5_PROMPT.format(
         resume_summary=json.dumps(req.resume_summary.model_dump(), indent=2),
         jd_analysis=json.dumps(req.jd_analysis.model_dump(), indent=2),
@@ -137,7 +159,9 @@ class CoverLetterPdfRequest(BaseModel):
 async def generate_cover_letter_pdf_route(
     request: Request,
     req: CoverLetterPdfRequest,
+    authorization: Optional[str] = Header(None),
 ) -> Response:
+    await _require_pro(authorization)
     try:
         import asyncio
         pdf_bytes = await asyncio.to_thread(

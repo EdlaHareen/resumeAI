@@ -95,7 +95,8 @@ export interface CoverLetterResult {
 export async function generateCoverLetter(
   resumeSummary: ResumeSummary,
   jdAnalysis: JDAnalysis,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  accessToken?: string,
 ): Promise<CoverLetterResult> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 130_000);
@@ -103,11 +104,14 @@ export async function generateCoverLetter(
     ? AbortSignal.any([signal, controller.signal])
     : controller.signal;
 
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
+
   let resp: Response;
   try {
     resp = await fetch(`${BASE}/cover-letter`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ resume_summary: resumeSummary, jd_analysis: jdAnalysis }),
       signal: combinedSignal,
     });
@@ -138,10 +142,13 @@ export async function downloadCoverLetterPdf(
   hiringManager: string,
   companyName: string,
   jobTitle: string,
+  accessToken?: string,
 ): Promise<Blob> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
   const resp = await fetch(`${BASE}/cover-letter/pdf`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({
       resume_summary: resumeSummary,
       cover_letter_text: coverLetterText,
@@ -180,11 +187,12 @@ export async function getUserSubscription(userId: string, accessToken?: string):
 export async function createRazorpaySubscription(
   userId: string,
   currency: "INR" | "USD",
+  accessToken: string,
   userEmail?: string,
 ): Promise<{ subscription_id: string; key_id: string; currency: string }> {
   const resp = await fetch(`${BASE}/razorpay/subscribe`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${accessToken}` },
     body: JSON.stringify({ user_id: userId, user_email: userEmail, currency }),
   });
   if (!resp.ok) {

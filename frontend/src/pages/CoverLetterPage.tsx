@@ -4,6 +4,7 @@ import { ErrorBanner } from "../components/ErrorBanner";
 import { UserNav } from "../components/UserNav";
 import { PreviewPanel } from "../components/PreviewPanel";
 import { generateCoverLetter, downloadCoverLetterPdf } from "../api/client";
+import { supabase } from "../lib/supabase";
 import type { ResumeSummary, JDAnalysis } from "../types";
 import type { User } from "@supabase/supabase-js";
 
@@ -44,7 +45,8 @@ export function CoverLetterPage({
     setError(null);
     setCoverLetter("");
     try {
-      const result = await generateCoverLetter(resumeSummary, jdAnalysis, abortRef.current.signal);
+      const { data: { session } } = await supabase.auth.getSession();
+      const result = await generateCoverLetter(resumeSummary, jdAnalysis, abortRef.current.signal, session?.access_token);
       setCoverLetter(result.cover_letter);
       setMetadata({
         hiring_manager: result.hiring_manager,
@@ -79,12 +81,14 @@ export function CoverLetterPage({
     setPdfLoading(true);
     setPdfError(null);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const blob = await downloadCoverLetterPdf(
         resumeSummary,
         coverLetter,
         metadata.hiring_manager,
         metadata.company_name,
         metadata.job_title,
+        session?.access_token,
       );
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -302,13 +306,17 @@ export function CoverLetterPage({
         borderLeft: "1px solid rgba(255,255,255,0.06)",
       }}>
         <PreviewPanel
-          fetchPdf={() => downloadCoverLetterPdf(
-            resumeSummary,
-            coverLetter,
-            metadata.hiring_manager,
-            metadata.company_name,
-            metadata.job_title,
-          )}
+          fetchPdf={async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            return downloadCoverLetterPdf(
+              resumeSummary,
+              coverLetter,
+              metadata.hiring_manager,
+              metadata.company_name,
+              metadata.job_title,
+              session?.access_token,
+            );
+          }}
         />
       </aside>
 

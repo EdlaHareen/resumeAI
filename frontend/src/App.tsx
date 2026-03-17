@@ -60,6 +60,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
+  const [tierReady, setTierReady] = useState(false);
 
   useEffect(() => {
     // Detect /admin URL — set step before auth resolves
@@ -87,6 +88,14 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Gate dashboard for free-tier users — redirect to upload + show upgrade modal
+  useEffect(() => {
+    if (step === "dashboard" && tierReady && tier === "free" && user && isSupabaseConfigured) {
+      setUpgradeReason("history");
+      setStep("upload");
+    }
+  }, [step, tierReady, tier, user]);
+
   async function fetchTier(userId: string) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -94,6 +103,8 @@ export default function App() {
       setTier(info.tier);
     } catch {
       setTier("free");
+    } finally {
+      setTierReady(true);
     }
   }
 
@@ -151,7 +162,7 @@ export default function App() {
 
   function handlePipelineDone(response: TailorResponse) {
     setResult(response);
-    if (user && tier === "pro") saveToHistory(response, currentFile?.name ?? "", currentJd).catch(console.error);
+    if (user) saveToHistory(response, currentFile?.name ?? "", currentJd).catch(console.error);
     setStep("review");
   }
 
@@ -291,6 +302,7 @@ export default function App() {
           user={user}
           onClose={() => setUpgradeReason(null)}
           onSignIn={() => { setUpgradeReason(null); setShowAuth(true); }}
+          onUpgradeSuccess={() => { if (user) fetchTier(user.id); setUpgradeReason(null); }}
         />
       )}
       {renderPage()}
