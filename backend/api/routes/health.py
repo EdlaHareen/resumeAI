@@ -32,16 +32,14 @@ async def health():
     else:
         session_store = "in_memory_only"  # sessions lost between serverless invocations!
 
-    # backend/bin/tectonic — build.sh CWD is backend/ (rootDir: backend in render.yaml)
-    _project_bin = os.path.normpath(
+    _backend_bin = os.path.normpath(
         os.path.join(os.path.dirname(__file__), "..", "..", "bin", "tectonic")
     )
-    tectonic_candidates = [
-        shutil.which("tectonic"),
-        _project_bin,
-        "/opt/homebrew/bin/tectonic",
-    ]
-    tectonic_found = next((p for p in tectonic_candidates if p and os.path.exists(p)), None)
+    tectonic_found = next(
+        (p for p in [shutil.which("tectonic"), _backend_bin, "/opt/homebrew/bin/tectonic"]
+         if p and os.path.exists(p)),
+        None,
+    )
     has_tectonic = bool(tectonic_found)
 
     status = "ok" if (anthropic_key or openai_key) else "degraded"
@@ -56,9 +54,7 @@ async def health():
         "pdf_generator": "latex" if has_tectonic else "reportlab_fallback",
         "tectonic_debug": {
             "found_at": tectonic_found,
-            "project_bin_path": _project_bin,
-            "project_bin_exists": os.path.exists(_project_bin),
-            "cwd": os.getcwd(),
-            "backend_dir": os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            "backend_bin_path": _backend_bin,
+            "backend_bin_exists": os.path.exists(_backend_bin),
         },
     }

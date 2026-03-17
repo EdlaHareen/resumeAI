@@ -3,12 +3,55 @@ LaTeX resume generator — mirrors the DOCX generator structure exactly.
 Centered header, ruled uppercase section headers, two-column entry lines, bullet lists.
 """
 
+import io
+import logging
 import os
 import re
 import shutil
 import subprocess
+import tarfile
 import tempfile
+import urllib.request
 from typing import Dict
+
+logger = logging.getLogger(__name__)
+
+_TECTONIC_VERSION = "0.15.0"
+_TECTONIC_URL = (
+    f"https://github.com/tectonic-typesetting/tectonic/releases/download/"
+    f"tectonic%40{_TECTONIC_VERSION}/"
+    f"tectonic-{_TECTONIC_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+)
+_BIN_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "bin"))
+_TECTONIC_BIN = os.path.join(_BIN_DIR, "tectonic")
+
+
+def _get_tectonic() -> str:
+    """Return path to tectonic binary, downloading it if necessary."""
+    # 1. Already on PATH
+    found = shutil.which("tectonic")
+    if found:
+        return found
+    # 2. Previously downloaded to backend/bin/
+    if os.path.exists(_TECTONIC_BIN):
+        return _TECTONIC_BIN
+    # 3. macOS Homebrew
+    if os.path.exists("/opt/homebrew/bin/tectonic"):
+        return "/opt/homebrew/bin/tectonic"
+
+    # 4. Download and cache in backend/bin/
+    logger.info("tectonic not found — downloading %s", _TECTONIC_URL)
+    os.makedirs(_BIN_DIR, exist_ok=True)
+    try:
+        with urllib.request.urlopen(_TECTONIC_URL, timeout=120) as resp:
+            data = resp.read()
+        with tarfile.open(fileobj=io.BytesIO(data)) as tar:
+            tar.extractall(_BIN_DIR)
+        os.chmod(_TECTONIC_BIN, 0o755)
+        logger.info("tectonic downloaded to %s", _TECTONIC_BIN)
+        return _TECTONIC_BIN
+    except Exception as e:
+        raise RuntimeError(f"Could not download tectonic: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -438,20 +481,7 @@ def build_latex(resume: dict) -> str:
 # ---------------------------------------------------------------------------
 
 def compile_latex_to_pdf(latex_source: str) -> bytes:
-    # backend/bin/tectonic — build.sh CWD is backend/ (rootDir: backend in render.yaml)
-    _project_bin = os.path.normpath(
-        os.path.join(os.path.dirname(__file__), "..", "bin", "tectonic")
-    )
-    tectonic_path = next(
-        (p for p in [
-            shutil.which("tectonic"),
-            _project_bin,                          # Render: /opt/render/project/src/bin/tectonic
-            "/opt/homebrew/bin/tectonic",          # macOS Homebrew
-        ] if p and os.path.exists(p)),
-        None,
-    )
-    if not tectonic_path:
-        raise RuntimeError("tectonic not found. Install with: brew install tectonic")
+    tectonic_path = _get_tectonic()
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tex_path = os.path.join(tmpdir, "resume.tex")
