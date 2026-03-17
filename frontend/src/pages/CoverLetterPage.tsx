@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Copy, Download, RefreshCw, Loader2, Check } from "lucide-react";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { UserNav } from "../components/UserNav";
+import { PreviewPanel } from "../components/PreviewPanel";
 import { generateCoverLetter, downloadCoverLetterPdf } from "../api/client";
 import type { ResumeSummary, JDAnalysis } from "../types";
 import type { User } from "@supabase/supabase-js";
@@ -130,7 +131,10 @@ export function CoverLetterPage({
         )}
       </nav>
 
-      <main style={{ maxWidth: 760, margin: "0 auto", padding: "2.5rem 1.5rem 6rem" }}>
+      {/* 60/40 split */}
+      <div style={{ display: "flex", height: "calc(100vh - 65px)" }}>
+
+      <main style={{ flex: "0 0 60%", maxWidth: "60%", overflowY: "auto", padding: "2.5rem 1.5rem 6rem" }}>
         {/* Header */}
         <div style={{ marginBottom: "2rem" }}>
           <div className="mono" style={{ color: "var(--lime)", marginBottom: "0.5rem" }}>ai generated</div>
@@ -288,6 +292,27 @@ export function CoverLetterPage({
           ← Back to Resume
         </button>
       </main>
+
+      {/* Right 40% — PDF preview */}
+      <aside style={{
+        flex: "0 0 40%",
+        maxWidth: "40%",
+        overflowY: "auto",
+        padding: "1.5rem",
+        borderLeft: "1px solid rgba(255,255,255,0.06)",
+      }}>
+        <PreviewPanel
+          fetchPdf={() => downloadCoverLetterPdf(
+            resumeSummary,
+            coverLetter,
+            metadata.hiring_manager,
+            metadata.company_name,
+            metadata.job_title,
+          )}
+        />
+      </aside>
+
+      </div>{/* end split */}
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );

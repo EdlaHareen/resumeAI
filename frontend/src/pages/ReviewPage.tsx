@@ -5,6 +5,7 @@ import { EdgeCaseAlert } from "../components/EdgeCaseAlert";
 import { DownloadBar } from "../components/DownloadBar";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { UserNav } from "../components/UserNav";
+import { PreviewPanel } from "../components/PreviewPanel";
 import type { TailorResponse, BulletState, DownloadRequest, Tier, UpgradeReason } from "../types";
 import { downloadFile } from "../api/client";
 import type { User } from "@supabase/supabase-js";
@@ -145,7 +146,10 @@ export function ReviewPage({ result, onDone, onCoverLetter, user, tier, onDashbo
         )}
       </nav>
 
-      <main style={{ maxWidth: 760, margin: "0 auto", padding: "2.5rem 1.5rem 8rem" }}>
+      {/* 60/40 split */}
+      <div style={{ display: "flex", height: "calc(100vh - 65px)" }}>
+
+      <main style={{ flex: "0 0 60%", maxWidth: "60%", overflowY: "auto", padding: "2.5rem 1.5rem 8rem" }}>
         {/* Header */}
         <div style={{ marginBottom: "2rem" }}>
           <div className="mono" style={{ color: "var(--lime)", marginBottom: "0.5rem" }}>review changes</div>
@@ -212,6 +216,19 @@ export function ReviewPage({ result, onDone, onCoverLetter, user, tier, onDashbo
           onRejectAll={handleRejectAll}
         />
       </main>
+
+      {/* Right 40% — PDF preview */}
+      <aside style={{
+        flex: "0 0 40%",
+        maxWidth: "40%",
+        overflowY: "auto",
+        padding: "1.5rem",
+        borderLeft: "1px solid rgba(255,255,255,0.06)",
+      }}>
+        <PreviewPanel fetchPdf={() => downloadFile("pdf", buildDownloadRequest(), user?.id)} />
+      </aside>
+
+      </div>{/* end split */}
 
       <DownloadBar
         onDownloadPDF={() => handleDownload("pdf")}
