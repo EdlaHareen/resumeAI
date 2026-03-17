@@ -32,12 +32,15 @@ async def health():
     else:
         session_store = "in_memory_only"  # sessions lost between serverless invocations!
 
-    tectonic_path = (
-        shutil.which("tectonic")
-        or os.path.expanduser("~/bin/tectonic")
-        or "/usr/local/bin/tectonic"
-    )
-    has_tectonic = bool(tectonic_path and os.path.exists(tectonic_path))
+    tectonic_candidates = [
+        shutil.which("tectonic"),
+        os.path.expanduser("~/bin/tectonic"),
+        "/usr/local/bin/tectonic",
+        "/opt/render/project/bin/tectonic",
+        "/opt/homebrew/bin/tectonic",
+    ]
+    tectonic_found = next((p for p in tectonic_candidates if p and os.path.exists(p)), None)
+    has_tectonic = bool(tectonic_found)
 
     status = "ok" if (anthropic_key or openai_key) else "degraded"
     if session_store == "in_memory_only":
@@ -49,4 +52,10 @@ async def health():
         "session_store": session_store,
         "supabase_backend": has_supabase_backend,
         "pdf_generator": "latex" if has_tectonic else "reportlab_fallback",
+        "tectonic_debug": {
+            "found_at": tectonic_found,
+            "home": os.path.expanduser("~"),
+            "home_bin_exists": os.path.exists(os.path.expanduser("~/bin/tectonic")),
+            "usr_local_exists": os.path.exists("/usr/local/bin/tectonic"),
+        },
     }
