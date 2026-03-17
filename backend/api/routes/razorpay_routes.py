@@ -144,8 +144,10 @@ async def razorpay_webhook(
 
 
 @router.get("/razorpay/subscription/{user_id}")
-async def get_subscription(user_id: str, authorization: str = Header(...)):
+async def get_subscription(user_id: str, authorization: Optional[str] = Header(None)):
     """Return tier + usage for the authenticated user only."""
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authorization header required.")
     verified_user_id = await asyncio.to_thread(auth_utils.verify_token, authorization)
     if verified_user_id != user_id:
         raise HTTPException(status_code=403, detail="Access denied.")

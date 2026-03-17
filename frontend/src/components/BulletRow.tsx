@@ -5,9 +5,9 @@ import type { BulletDiff, BulletState } from "../types";
 function highlightKeywords(
   text: string,
   keywords: string[],
-  injectedKeywords: string[],
+  injectedKeywords?: string[],
 ): React.ReactNode {
-  const all = [...keywords, ...injectedKeywords];
+  const all = [...keywords, ...(injectedKeywords ?? [])];
   if (!all.length) return text;
   const escaped = all.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
   const pattern = new RegExp(`(${escaped.join("|")})`, "gi");
@@ -200,7 +200,7 @@ export function BulletRow({ diff, state, onChange }: Props) {
       </div>
 
       {/* Keywords added */}
-      {(diff.keywords_added.length > 0 || diff.injected_keywords.length > 0) && (
+      {(diff.keywords_added.length > 0 || (diff.injected_keywords?.length ?? 0) > 0) && (
         <div style={{ marginTop: "0.75rem", display: "flex", flexWrap: "wrap", gap: "0.375rem" }}>
           {diff.keywords_added.map((kw) => (
             <span
@@ -218,7 +218,7 @@ export function BulletRow({ diff, state, onChange }: Props) {
               +{kw}
             </span>
           ))}
-          {diff.injected_keywords.map((kw) => (
+          {(diff.injected_keywords ?? []).map((kw) => (
             <span
               key={kw}
               title="Injected from JD — verify you have experience with this"

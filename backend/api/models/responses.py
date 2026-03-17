@@ -66,7 +66,10 @@ class TailorResponse(BaseModel):
 
 
 class CoverLetterResponse(BaseModel):
-    cover_letter: str
+    cover_letter: str       # full assembled text for display/editing
+    hiring_manager: str
+    company_name: str
+    job_title: str
 
 
 class HealthResponse(BaseModel):

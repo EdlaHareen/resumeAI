@@ -4,7 +4,7 @@ export interface BulletDiff {
   original: string;
   tailored: string;
   keywords_added: string[];
-  injected_keywords: string[];
+  injected_keywords?: string[];
   action_verb_changed: boolean;
 }
 
@@ -64,6 +64,7 @@ export interface TailorResponse {
 export interface DownloadRequest {
   session_id: string;
   accepted_bullets: Record<string, string>; // bullet_id -> text or "original"
+  user_id?: string;
 }
 
 // Bullet state during review

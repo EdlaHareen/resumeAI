@@ -17,7 +17,7 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 _URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 _KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 # Anon key is needed as apikey when validating user JWTs via /auth/v1/user
-_ANON_KEY = os.getenv("VITE_SUPABASE_ANON_KEY", "") or os.getenv("SUPABASE_ANON_KEY", "")
+_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
 
 
 def _get(path: str, params: str = "") -> Any:
@@ -33,8 +33,10 @@ def _get(path: str, params: str = "") -> Any:
         return json.loads(resp.read().decode())
 
 
-def _verify_admin(authorization: str = Header(...)) -> str:
+def _verify_admin(authorization: Optional[str] = Header(None)) -> str:
     """Verify Supabase JWT and assert is_admin in user_metadata. Returns user_id."""
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authorization header required.")
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing token")
     token = authorization[7:]

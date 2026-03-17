@@ -1,11 +1,12 @@
 import json
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import BaseModel
 from ai.client import call_llm_async
 from ai.router import select_model
 from ai.prompts import STAGE5_SYSTEM, STAGE5_PROMPT
+from api.models.responses import CoverLetterResponse
 from generators.cover_letter_generator import (
     generate_cover_letter_pdf_from_text,
 )
@@ -57,13 +58,6 @@ class CoverLetterRequest(BaseModel):
     jd_analysis: JDAnalysisIn
 
 
-class CoverLetterTextResponse(BaseModel):
-    cover_letter: str       # full assembled text for display/editing
-    hiring_manager: str
-    company_name: str
-    job_title: str
-
-
 import re as _re
 
 
@@ -83,12 +77,12 @@ def _parse_json_response(text: str) -> dict:
     return obj
 
 
-@router.post("/cover-letter", response_model=CoverLetterTextResponse)
+@router.post("/cover-letter", response_model=CoverLetterResponse)
 @limiter.limit("5/minute")
 async def generate_cover_letter_route(
     request: Request,
     req: CoverLetterRequest,
-) -> CoverLetterTextResponse:
+) -> CoverLetterResponse:
     prompt = STAGE5_PROMPT.format(
         resume_summary=json.dumps(req.resume_summary.model_dump(), indent=2),
         jd_analysis=json.dumps(req.jd_analysis.model_dump(), indent=2),
@@ -118,7 +112,7 @@ async def generate_cover_letter_route(
     ]
     full_text = "\n\n".join(p for p in paragraphs if p.strip())
 
-    return CoverLetterTextResponse(
+    return CoverLetterResponse(
         cover_letter=full_text,
         hiring_manager=cover_data.get("hiring_manager", "Hiring Manager"),
         company_name=cover_data.get("company_name", ""),
@@ -131,8 +125,8 @@ async def generate_cover_letter_route(
 # ---------------------------------------------------------------------------
 
 class CoverLetterPdfRequest(BaseModel):
-    resume_summary: ResumeSummaryIn
-    cover_letter_text: str       # full text (possibly user-edited)
+    resume_summary: Dict[str, Any]   # raw JSON from frontend — no strict nested validation
+    cover_letter_text: str           # full text (possibly user-edited)
     hiring_manager: str = "Hiring Manager"
     company_name: str = ""
     job_title: str = ""
@@ -148,7 +142,7 @@ async def generate_cover_letter_pdf_route(
         import asyncio
         pdf_bytes = await asyncio.to_thread(
             generate_cover_letter_pdf_from_text,
-            req.resume_summary.model_dump(),
+            req.resume_summary,
             req.cover_letter_text,
             req.hiring_manager,
             req.company_name,
