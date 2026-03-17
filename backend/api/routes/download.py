@@ -1,6 +1,9 @@
+import logging
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from io import BytesIO
+
+logger = logging.getLogger(__name__)
 
 from api.models.requests import DownloadRequest
 from pipeline.orchestrator import get_session
@@ -68,11 +71,14 @@ async def download_pdf(req: DownloadRequest):
 
     try:
         pdf_bytes = generate_pdf_latex(resume_structured, final_bullets)
-    except RuntimeError:
+        logger.info("PDF generated via LaTeX/tectonic")
+    except RuntimeError as e:
+        logger.warning("LaTeX generation failed, falling back to reportlab: %s", e)
         try:
             pdf_bytes = generate_pdf(resume_structured, final_bullets)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
+            logger.info("PDF generated via reportlab fallback")
+        except Exception as e2:
+            raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e2)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
 

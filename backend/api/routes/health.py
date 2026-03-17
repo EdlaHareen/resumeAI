@@ -1,4 +1,5 @@
 import os
+import shutil
 from fastapi import APIRouter
 from api.models.responses import HealthResponse
 
@@ -31,6 +32,9 @@ async def health():
     else:
         session_store = "in_memory_only"  # sessions lost between serverless invocations!
 
+    tectonic_path = shutil.which("tectonic") or "/usr/local/bin/tectonic"
+    has_tectonic = bool(tectonic_path and os.path.exists(tectonic_path))
+
     status = "ok" if (anthropic_key or openai_key) else "degraded"
     if session_store == "in_memory_only":
         status = "degraded"
@@ -40,4 +44,5 @@ async def health():
         "ai_providers": providers,
         "session_store": session_store,
         "supabase_backend": has_supabase_backend,
+        "pdf_generator": "latex" if has_tectonic else "reportlab_fallback",
     }
