@@ -58,5 +58,7 @@ async def health():
             "found_at": tectonic_found,
             "project_bin_path": _project_bin,
             "project_bin_exists": os.path.exists(_project_bin),
+            "cwd": os.getcwd(),
+            "backend_dir": os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
         },
     }
