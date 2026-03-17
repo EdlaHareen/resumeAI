@@ -63,17 +63,64 @@ def _apply_bullets(resume_structured: dict, accepted_bullets: Dict[str, str]) ->
 # Entry field extractor (mirrors docx_generator._get_entry_fields)
 # ---------------------------------------------------------------------------
 
+_DATE_PAT = re.compile(
+    r"((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}"
+    r"|(?:\d{4})\s*[-–]\s*(?:\d{4}|Present|present|Current|current)"
+    r"|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}"
+    r"\s*[-–]\s*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}"
+    r"|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}"
+    r"\s*[-–]\s*(?:Present|present|Current|current))"
+)
+
+
+def _split_dates(text: str) -> tuple[str, str]:
+    """Extract trailing date range from text, return (text_without_dates, dates)."""
+    m = _DATE_PAT.search(text)
+    if m:
+        dates = text[m.start():].strip()
+        before = text[:m.start()].strip().rstrip("|–- ").strip()
+        return before, dates
+    return text.strip(), ""
+
+
 def _get_entry_fields(entry: dict) -> dict:
     company = entry.get("company", "")
     role = entry.get("role", "")
     location = entry.get("location", "")
     dates = entry.get("dates", "")
 
-    if not company:
-        header = entry.get("header", "")
-        lines = [l.strip() for l in header.split("\n") if l.strip()]
-        company = lines[0] if lines else header
-        role = role or (lines[1] if len(lines) > 1 else "")
+    # If company already has everything structured, use as-is
+    if company and (role or dates):
+        return {"company": company, "role": role, "location": location, "dates": dates}
+
+    # Try to parse from header or combined company field
+    raw = company or entry.get("header", "")
+    if not raw:
+        return {"company": "", "role": role, "location": location, "dates": dates}
+
+    # Split by pipe or newline into parts
+    if "\n" in raw:
+        parts = [p.strip() for p in raw.split("\n") if p.strip()]
+    elif "|" in raw:
+        parts = [p.strip() for p in raw.split("|") if p.strip()]
+    else:
+        parts = [raw.strip()]
+
+    # Extract dates from the last part or trailing of any part
+    if not dates:
+        last = parts[-1] if parts else ""
+        cleaned, dates = _split_dates(last)
+        if dates and cleaned != last:
+            parts[-1] = cleaned
+            if not parts[-1]:
+                parts.pop()
+
+    if len(parts) >= 2:
+        company = parts[0].strip()
+        role = role or parts[1].strip()
+    elif parts:
+        # Single part — try to split role from company if no dates yet
+        company = parts[0].strip()
 
     return {"company": company, "role": role, "location": location, "dates": dates}
 
@@ -247,31 +294,28 @@ def _render_projects(section: dict) -> str:
     return "\n".join(lines)
 
 
+_SKILLS_SKIP = {"technical skills", "skills", "core competencies", "competencies"}
+
+
+def _render_skill_line(text: str) -> str:
+    if ":" in text:
+        cat, _, items = text.partition(":")
+        return r"\textbf{" + _esc(cat.strip()) + r":} " + _esc(items.strip()) + r" \\"
+    return _esc(text) + r" \\"
+
+
 def _render_skills(section: dict) -> str:
     lines = [r"\section{TECHNICAL SKILLS}", ""]
     for entry in section.get("entries", []):
         for b in entry.get("bullets", []):
             text = b.get("text", "").strip()
-            if not text:
-                continue
-            if ":" in text:
-                cat, _, items = text.partition(":")
-                lines.append(
-                    r"\textbf{" + _esc(cat.strip()) + r":} " + _esc(items.strip()) + r" \\"
-                )
-            else:
-                lines.append(_esc(text) + r" \\")
+            if text and text.lower() not in _SKILLS_SKIP:
+                lines.append(_render_skill_line(text))
 
         if not entry.get("bullets"):
             header = (entry.get("header", "") or entry.get("company", "")).strip()
-            if header:
-                if ":" in header:
-                    cat, _, items = header.partition(":")
-                    lines.append(
-                        r"\textbf{" + _esc(cat.strip()) + r":} " + _esc(items.strip()) + r" \\"
-                    )
-                else:
-                    lines.append(_esc(header) + r" \\")
+            if header and header.lower() not in _SKILLS_SKIP:
+                lines.append(_render_skill_line(header))
 
     return "\n".join(lines)
 
