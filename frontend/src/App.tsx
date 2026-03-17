@@ -191,6 +191,7 @@ export default function App() {
             onNewResume={() => setStep("upload")}
             onSignOut={handleSignOut}
             onLogoClick={handleLogoClick}
+            onBack={() => setStep("landing")}
             onReopen={handleReopen}
           />
         ) : null;

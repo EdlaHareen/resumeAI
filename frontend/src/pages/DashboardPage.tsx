@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { FileText, Plus, TrendingUp, Clock, ExternalLink, Search, ChevronDown, ChevronRight } from "lucide-react";
+import { FileText, Plus, TrendingUp, Clock, ExternalLink, Search, ChevronDown, ChevronRight, ArrowLeft } from "lucide-react";
 import { UserNav } from "../components/UserNav";
 import { loadHistory } from "../lib/history";
 import type { HistoryEntry, TailorResponse } from "../types";
@@ -10,6 +10,7 @@ interface Props {
   onNewResume: () => void;
   onSignOut: () => void;
   onLogoClick: () => void;
+  onBack: () => void;
   onReopen: (result: TailorResponse) => void;
 }
 
@@ -97,7 +98,7 @@ function HistoryCard({ entry, onReopen }: { entry: HistoryEntry; onReopen: (r: T
   );
 }
 
-export function DashboardPage({ user, onNewResume, onSignOut, onLogoClick, onReopen }: Props) {
+export function DashboardPage({ user, onNewResume, onSignOut, onLogoClick, onBack, onReopen }: Props) {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -163,6 +164,24 @@ export function DashboardPage({ user, onNewResume, onSignOut, onLogoClick, onReo
       </nav>
 
       <main style={{ maxWidth: 800, margin: "0 auto", padding: "3rem 1.5rem" }}>
+        {/* Back button */}
+        <button
+          onClick={onBack}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: "0.4rem",
+            marginBottom: "1.5rem",
+            background: "none", border: "none", cursor: "pointer", padding: 0,
+            color: "rgba(235,235,235,0.4)", fontSize: 13,
+            fontFamily: "'Space Grotesk', sans-serif",
+            transition: "color 0.15s",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = "var(--lime)"; }}
+          onMouseLeave={e => { e.currentTarget.style.color = "rgba(235,235,235,0.4)"; }}
+        >
+          <ArrowLeft size={14} />
+          Back to Home
+        </button>
+
         {/* Header */}
         <div style={{ marginBottom: "2.5rem", display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
           <div>
