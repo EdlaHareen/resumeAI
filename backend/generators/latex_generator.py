@@ -438,9 +438,9 @@ def build_latex(resume: dict) -> str:
 # ---------------------------------------------------------------------------
 
 def compile_latex_to_pdf(latex_source: str) -> bytes:
-    # Project bin/ dir: build.sh installs tectonic here so it survives Render's build→runtime handoff
+    # backend/bin/tectonic — build.sh CWD is backend/ (rootDir: backend in render.yaml)
     _project_bin = os.path.normpath(
-        os.path.join(os.path.dirname(__file__), "..", "..", "bin", "tectonic")
+        os.path.join(os.path.dirname(__file__), "..", "bin", "tectonic")
     )
     tectonic_path = next(
         (p for p in [

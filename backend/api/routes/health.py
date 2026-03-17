@@ -32,8 +32,9 @@ async def health():
     else:
         session_store = "in_memory_only"  # sessions lost between serverless invocations!
 
+    # backend/bin/tectonic — build.sh CWD is backend/ (rootDir: backend in render.yaml)
     _project_bin = os.path.normpath(
-        os.path.join(os.path.dirname(__file__), "..", "..", "..", "bin", "tectonic")
+        os.path.join(os.path.dirname(__file__), "..", "..", "bin", "tectonic")
     )
     tectonic_candidates = [
         shutil.which("tectonic"),
