@@ -32,11 +32,12 @@ async def health():
     else:
         session_store = "in_memory_only"  # sessions lost between serverless invocations!
 
+    _project_bin = os.path.normpath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "..", "bin", "tectonic")
+    )
     tectonic_candidates = [
         shutil.which("tectonic"),
-        os.path.expanduser("~/bin/tectonic"),
-        "/usr/local/bin/tectonic",
-        "/opt/render/project/bin/tectonic",
+        _project_bin,
         "/opt/homebrew/bin/tectonic",
     ]
     tectonic_found = next((p for p in tectonic_candidates if p and os.path.exists(p)), None)
@@ -54,8 +55,7 @@ async def health():
         "pdf_generator": "latex" if has_tectonic else "reportlab_fallback",
         "tectonic_debug": {
             "found_at": tectonic_found,
-            "home": os.path.expanduser("~"),
-            "home_bin_exists": os.path.exists(os.path.expanduser("~/bin/tectonic")),
-            "usr_local_exists": os.path.exists("/usr/local/bin/tectonic"),
+            "project_bin_path": _project_bin,
+            "project_bin_exists": os.path.exists(_project_bin),
         },
     }

@@ -438,13 +438,19 @@ def build_latex(resume: dict) -> str:
 # ---------------------------------------------------------------------------
 
 def compile_latex_to_pdf(latex_source: str) -> bytes:
-    tectonic_path = (
-        shutil.which("tectonic")
-        or os.path.expanduser("~/bin/tectonic")   # Render (installed by build.sh)
-        or "/usr/local/bin/tectonic"               # Linux system-wide
-        or "/opt/homebrew/bin/tectonic"            # macOS Homebrew
+    # Project bin/ dir: build.sh installs tectonic here so it survives Render's build→runtime handoff
+    _project_bin = os.path.normpath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "bin", "tectonic")
     )
-    if not tectonic_path or not os.path.exists(tectonic_path):
+    tectonic_path = next(
+        (p for p in [
+            shutil.which("tectonic"),
+            _project_bin,                          # Render: /opt/render/project/src/bin/tectonic
+            "/opt/homebrew/bin/tectonic",          # macOS Homebrew
+        ] if p and os.path.exists(p)),
+        None,
+    )
+    if not tectonic_path:
         raise RuntimeError("tectonic not found. Install with: brew install tectonic")
 
     with tempfile.TemporaryDirectory() as tmpdir:
