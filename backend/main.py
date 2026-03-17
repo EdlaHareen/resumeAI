@@ -24,6 +24,18 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
+@app.on_event("startup")
+async def download_tectonic_on_startup():
+    """Pre-download tectonic at startup so first PDF request isn't slow."""
+    import asyncio
+    from generators.latex_generator import _get_tectonic
+    try:
+        await asyncio.to_thread(_get_tectonic)
+        logging.info("tectonic ready")
+    except Exception as e:
+        logging.warning("tectonic unavailable at startup (will use reportlab fallback): %s", e)
+
+
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
     tb = traceback.format_exc()
