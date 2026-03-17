@@ -121,7 +121,7 @@ export function PreviewPanel({ fetchPdf }: Props) {
 
         {pdfUrl && (
           <iframe
-            src={pdfUrl}
+            src={`${pdfUrl}#navpanes=0&toolbar=0`}
             title="PDF Preview"
             style={{ width: "100%", height: "100%", border: "none" }}
           />
