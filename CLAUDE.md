@@ -233,6 +233,15 @@ cd frontend && npm run dev -- --host 0.0.0.0
 # → http://localhost:5173
 ```
 
+## Deployment
+
+- **Frontend**: Vercel — https://resume-ai-omega-nine.vercel.app/
+- **Backend**: Render — https://resumeai-krug.onrender.com
+- **Routing**: `vercel.json` rewrites `/api/*` → Render backend (no Netlify)
+- **Build**: `build.sh` installs tectonic 0.15.0 on Render for LaTeX PDF generation
+- **PDF**: `latex_generator.py` primary (Jake's format), reportlab fallback
+- **PDF generation**: tectonic/LaTeX (primary, Jake's Resume format), reportlab fallback
+
 ## Architectural Decisions
 
 - **No session for cover letter**: `resume_summary` and `jd_analysis` are included in `TailorResponse` and passed from the frontend. Avoids session TTL/restart issues entirely.
