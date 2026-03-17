@@ -32,7 +32,11 @@ async def health():
     else:
         session_store = "in_memory_only"  # sessions lost between serverless invocations!
 
-    tectonic_path = shutil.which("tectonic") or "/usr/local/bin/tectonic"
+    tectonic_path = (
+        shutil.which("tectonic")
+        or os.path.expanduser("~/bin/tectonic")
+        or "/usr/local/bin/tectonic"
+    )
     has_tectonic = bool(tectonic_path and os.path.exists(tectonic_path))
 
     status = "ok" if (anthropic_key or openai_key) else "degraded"
