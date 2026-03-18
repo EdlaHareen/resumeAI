@@ -43,7 +43,7 @@ import { supabase, isSupabaseConfigured } from "./lib/supabase";
 import { saveToHistory } from "./lib/history";
 import { incrementAnonCount, anonLimitReached } from "./lib/subscription";
 import type { AppStep, TailorResponse, Tier, UpgradeReason } from "./types";
-import { startTailor, getUserSubscription, ApiError } from "./api/client";
+import { startTailor, getUserSubscription, cancelRazorpaySubscription, ApiError } from "./api/client";
 // Note: createCheckoutSession removed — now using Razorpay via UpgradeModal directly
 import type { User } from "@supabase/supabase-js";
 
@@ -117,7 +117,6 @@ export default function App() {
     if (!window.confirm("Cancel your Pro subscription? You'll lose access at the end of the current billing period.")) return;
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const { cancelRazorpaySubscription } = await import("./api/client");
       await cancelRazorpaySubscription(session?.access_token ?? "");
       setTier("free");
     } catch (e) {
