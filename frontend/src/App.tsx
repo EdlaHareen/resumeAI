@@ -61,6 +61,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
   const [tierReady, setTierReady] = useState(false);
+  const [pendingUpgrade, setPendingUpgrade] = useState(false);
 
   useEffect(() => {
     // Detect /admin URL — set step before auth resolves
@@ -112,6 +113,18 @@ export default function App() {
     setUpgradeReason(reason);
   }
 
+  async function handleCancelSubscription() {
+    if (!window.confirm("Cancel your Pro subscription? You'll lose access at the end of the current billing period.")) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const { cancelRazorpaySubscription } = await import("./api/client");
+      await cancelRazorpaySubscription(session?.access_token ?? "");
+      setTier("free");
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Cancellation failed. Please try again.");
+    }
+  }
+
   function handleGetStarted() {
     if (!isSupabaseConfigured || user) {
       setStep(user ? "dashboard" : "upload");
@@ -120,8 +133,22 @@ export default function App() {
     }
   }
 
+  function handleStartPro() {
+    if (user) {
+      showUpgrade("tailor_limit");
+    } else {
+      setPendingUpgrade(true);
+      setShowAuth(true);
+    }
+  }
+
   function handleAuthSuccess() {
     setShowAuth(false);
+    if (pendingUpgrade) {
+      setPendingUpgrade(false);
+      showUpgrade("tailor_limit");
+      return;
+    }
     // Preserve admin step if user logged in from /admin route
     setStep(prev => prev === "admin" ? "admin" : "dashboard");
   }
@@ -193,17 +220,19 @@ export default function App() {
   function renderPage() {
     switch (step) {
       case "landing":
-        return <LandingPage onGetStarted={handleGetStarted} onLogoClick={handleLogoClick} />;
+        return <LandingPage onGetStarted={handleGetStarted} onStartPro={handleStartPro} onLogoClick={handleLogoClick} />;
 
       case "dashboard":
         return user ? (
           <DashboardPage
             user={user}
+            tier={tier}
             onNewResume={() => setStep("upload")}
             onSignOut={handleSignOut}
             onLogoClick={handleLogoClick}
             onBack={() => setStep("landing")}
             onReopen={handleReopen}
+            onCancelSubscription={handleCancelSubscription}
           />
         ) : null;
 
@@ -246,6 +275,7 @@ export default function App() {
             onSignOut={handleSignOut}
             onLogoClick={handleLogoClick}
             onUpgrade={showUpgrade}
+            onCancelSubscription={handleCancelSubscription}
           />
           </ReviewErrorBoundary>
         ) : null;
@@ -287,7 +317,7 @@ export default function App() {
         return <AdminPage user={user} onLogoClick={handleLogoClick} onBack={() => setStep("dashboard")} />;
 
       default:
-        return <LandingPage onGetStarted={handleGetStarted} onLogoClick={handleLogoClick} />;
+        return <LandingPage onGetStarted={handleGetStarted} onStartPro={handleStartPro} onLogoClick={handleLogoClick} />;
     }
   }
 

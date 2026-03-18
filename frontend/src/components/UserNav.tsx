@@ -1,16 +1,19 @@
 import { useState, useRef, useEffect } from "react";
-import { LogOut, LayoutDashboard, ChevronDown, FileText, Shield } from "lucide-react";
+import { LogOut, LayoutDashboard, ChevronDown, FileText, Shield, XCircle } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import type { User } from "@supabase/supabase-js";
+import type { Tier } from "../types";
 
 interface Props {
   user: User;
+  tier?: Tier;
   onDashboard: () => void;
   onSignOut: () => void;
   onNewResume: () => void;
+  onCancelSubscription?: () => void;
 }
 
-export function UserNav({ user, onDashboard, onSignOut, onNewResume }: Props) {
+export function UserNav({ user, tier, onDashboard, onSignOut, onNewResume, onCancelSubscription }: Props) {
   const isAdmin = Boolean(user.user_metadata?.is_admin);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -97,6 +100,7 @@ export function UserNav({ user, onDashboard, onSignOut, onNewResume }: Props) {
               { icon: <LayoutDashboard size={14} />, label: "My Dashboard", action: () => { setOpen(false); onDashboard(); } },
               { icon: <FileText size={14} />, label: "Tailor New Resume", action: () => { setOpen(false); onNewResume(); } },
               ...(isAdmin ? [{ icon: <Shield size={14} />, label: "Admin Panel", action: () => { setOpen(false); window.location.href = "/admin"; } }] : []),
+              ...(tier === "pro" && onCancelSubscription ? [{ icon: <XCircle size={14} />, label: "Cancel subscription", action: () => { setOpen(false); onCancelSubscription(); } }] : []),
             ].map(({ icon, label, action }) => (
               <button
                 key={label}

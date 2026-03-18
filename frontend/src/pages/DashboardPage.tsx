@@ -7,11 +7,13 @@ import type { User } from "@supabase/supabase-js";
 
 interface Props {
   user: User;
+  tier?: import("../types").Tier;
   onNewResume: () => void;
   onSignOut: () => void;
   onLogoClick: () => void;
   onBack: () => void;
   onReopen: (result: TailorResponse) => void;
+  onCancelSubscription?: () => void;
 }
 
 function ScorePill({ value, color }: { value: number; color: string }) {
@@ -98,7 +100,7 @@ function HistoryCard({ entry, onReopen }: { entry: HistoryEntry; onReopen: (r: T
   );
 }
 
-export function DashboardPage({ user, onNewResume, onSignOut, onLogoClick, onBack, onReopen }: Props) {
+export function DashboardPage({ user, tier, onNewResume, onSignOut, onLogoClick, onBack, onReopen, onCancelSubscription }: Props) {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -160,7 +162,7 @@ export function DashboardPage({ user, onNewResume, onSignOut, onLogoClick, onBac
         >
           Resume<span style={{ color: "var(--lime)" }}>AI</span>
         </button>
-        <UserNav user={user} onDashboard={() => {}} onSignOut={onSignOut} onNewResume={onNewResume} />
+        <UserNav user={user} tier={tier} onDashboard={() => {}} onSignOut={onSignOut} onNewResume={onNewResume} onCancelSubscription={onCancelSubscription} />
       </nav>
 
       <main style={{ maxWidth: 800, margin: "0 auto", padding: "3rem 1.5rem" }}>

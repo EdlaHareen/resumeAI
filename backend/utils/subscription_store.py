@@ -70,13 +70,23 @@ def _rpc(func: str, params: dict) -> Optional[object]:
 
 
 def get_tier(user_id: str) -> str:
-    """Returns 'pro' or 'free'."""
+    """Returns 'pro' or 'free'. 'halted' is treated as pro (Razorpay retry grace period)."""
     rows = _req("GET", "user_subscriptions", params=f"user_id=eq.{urllib.parse.quote(user_id, safe='')}&select=tier,status")
     if rows and isinstance(rows, list) and len(rows) > 0:
         sub = rows[0]
-        if sub.get("tier") == "pro" and sub.get("status") in ("active", "trialing"):
+        if sub.get("tier") == "pro" and sub.get("status") in ("active", "trialing", "halted"):
             return "pro"
     return "free"
+
+
+def get_razorpay_subscription_id(user_id: str) -> Optional[str]:
+    """Return the stored Razorpay subscription_id for the user if subscription is active/halted."""
+    rows = _req("GET", "user_subscriptions", params=f"user_id=eq.{urllib.parse.quote(user_id, safe='')}&select=stripe_subscription_id,status")
+    if rows and isinstance(rows, list) and len(rows) > 0:
+        sub = rows[0]
+        if sub.get("status") in ("active", "trialing", "halted"):
+            return sub.get("stripe_subscription_id")
+    return None
 
 
 def get_monthly_usage(user_id: str) -> int:
@@ -136,10 +146,15 @@ def deactivate_by_subscription_id(stripe_subscription_id: str) -> None:
 
 def get_subscription_info(user_id: str) -> dict:
     """Return tier + usage for the frontend."""
-    rows = _req("GET", "user_subscriptions", params=f"user_id=eq.{urllib.parse.quote(user_id, safe='')}&select=tier,status,period_end")
+    rows = _req("GET", "user_subscriptions", params=f"user_id=eq.{urllib.parse.quote(user_id, safe='')}&select=tier,status,period_end,stripe_subscription_id")
     if rows and isinstance(rows, list) and len(rows) > 0:
         sub = rows[0]
-        if sub.get("tier") == "pro" and sub.get("status") in ("active", "trialing"):
-            return {"tier": "pro", "status": sub.get("status"), "period_end": sub.get("period_end")}
+        if sub.get("tier") == "pro" and sub.get("status") in ("active", "trialing", "halted"):
+            return {
+                "tier": "pro",
+                "status": sub.get("status"),
+                "period_end": sub.get("period_end"),
+                "subscription_id": sub.get("stripe_subscription_id"),
+            }
     usage = get_monthly_usage(user_id)
     return {"tier": "free", "usage": usage, "limit": FREE_MONTHLY_LIMIT}

@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 
 interface Props {
   onGetStarted: () => void;
+  onStartPro: () => void;
   onLogoClick: () => void;
 }
 
@@ -550,7 +551,7 @@ function Methodology() {
 }
 
 // ── Pricing ──────────────────────────────────────────────────────────────────
-function Pricing({ onGetStarted }: { onGetStarted: () => void }) {
+function Pricing({ onGetStarted, onStartPro }: { onGetStarted: () => void; onStartPro: () => void }) {
   const plans = [
     {
       name: "Free",
@@ -560,6 +561,7 @@ function Pricing({ onGetStarted }: { onGetStarted: () => void }) {
       features: ["3 tailors per month", "PDF download", "ATS score", "Keyword match"],
       cta: "Get Started Free",
       accent: false,
+      onClick: onGetStarted,
     },
     {
       name: "Pro",
@@ -569,6 +571,7 @@ function Pricing({ onGetStarted }: { onGetStarted: () => void }) {
       features: ["Unlimited tailors", "PDF + DOCX download", "History & dashboard", "Cover letter generation", "Priority processing"],
       cta: "Start Pro →",
       accent: true,
+      onClick: onStartPro,
     },
     {
       name: "Team",
@@ -578,6 +581,7 @@ function Pricing({ onGetStarted }: { onGetStarted: () => void }) {
       features: ["5 seats included", "Everything in Pro", "Bulk resume upload", "API access", "Dedicated support"],
       cta: "Contact Us",
       accent: false,
+      onClick: onGetStarted,
     },
   ];
 
@@ -647,7 +651,7 @@ function Pricing({ onGetStarted }: { onGetStarted: () => void }) {
             </ul>
 
             <button
-              onClick={onGetStarted}
+              onClick={plan.onClick}
               style={{
                 marginTop: "2rem",
                 width: "100%",
@@ -757,7 +761,7 @@ function FooterCTA({ onGetStarted }: { onGetStarted: () => void }) {
 }
 
 // ── Main export ──────────────────────────────────────────────────────────────
-export function LandingPage({ onGetStarted, onLogoClick }: Props) {
+export function LandingPage({ onGetStarted, onStartPro, onLogoClick }: Props) {
   const shellRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -822,7 +826,7 @@ export function LandingPage({ onGetStarted, onLogoClick }: Props) {
           <TrustBar />
           <BentoFeatures />
           <Methodology />
-          <Pricing onGetStarted={onGetStarted} />
+          <Pricing onGetStarted={onGetStarted} onStartPro={onStartPro} />
           <FooterCTA onGetStarted={onGetStarted} />
         </div>
       </div>

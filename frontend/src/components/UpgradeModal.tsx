@@ -1,6 +1,6 @@
 import { X, Zap, Check, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { createRazorpayOrder, verifyRazorpayPayment } from "../api/client";
+import { createRazorpaySubscription, verifyRazorpayPayment } from "../api/client";
 import { supabase } from "../lib/supabase";
 import type { User } from "@supabase/supabase-js";
 
@@ -62,8 +62,7 @@ export function UpgradeModal({ reason, user, onClose, onSignIn, onUpgradeSuccess
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   // Detect Indian locale → default INR
-  const defaultCurrency = navigator.language?.startsWith("en-IN") ? "INR" : "USD";
-  const [currency, setCurrency] = useState<"INR" | "USD">(defaultCurrency);
+  const [currency, setCurrency] = useState<"INR" | "USD">("INR");
   const copy = REASON_COPY[reason];
 
   async function handleUpgrade() {
@@ -77,29 +76,27 @@ export function UpgradeModal({ reason, user, onClose, onSignIn, onUpgradeSuccess
 
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token ?? "";
-      const { order_id, key_id, amount } = await createRazorpayOrder(user.id, currency, accessToken);
+      const { subscription_id, key_id } = await createRazorpaySubscription(user.id, currency, accessToken);
 
       await new Promise<void>((resolve, reject) => {
         const rzp = new window.Razorpay({
           key: key_id,
-          order_id,
+          subscription_id,
           name: "ResumeAI",
-          description: "Pro Access",
-          currency,
-          amount,
+          description: "Pro — Monthly",
           prefill: { email: user.email ?? "" },
           theme: { color: "#ccff00" },
           modal: { ondismiss: () => reject(new Error("dismissed")) },
           handler: async (response: {
             razorpay_payment_id: string;
-            razorpay_order_id: string;
+            razorpay_subscription_id: string;
             razorpay_signature: string;
           }) => {
             try {
               await verifyRazorpayPayment({
                 user_id: user.id,
                 razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_order_id: response.razorpay_order_id,
+                razorpay_subscription_id: response.razorpay_subscription_id,
                 razorpay_signature: response.razorpay_signature,
               }, accessToken);
               resolve();

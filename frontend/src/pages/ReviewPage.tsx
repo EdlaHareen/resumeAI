@@ -20,6 +20,7 @@ interface Props {
   onSignOut: () => void;
   onLogoClick: () => void;
   onUpgrade: (reason: UpgradeReason) => void;
+  onCancelSubscription?: () => void;
 }
 
 function triggerDownload(blob: Blob, filename: string) {
@@ -31,7 +32,7 @@ function triggerDownload(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export function ReviewPage({ result, onDone, onCoverLetter, user, tier, onDashboard, onSignOut, onLogoClick, onUpgrade }: Props) {
+export function ReviewPage({ result, onDone, onCoverLetter, user, tier, onDashboard, onSignOut, onLogoClick, onUpgrade, onCancelSubscription }: Props) {
   const [bulletStates, setBulletStates] = useState<Record<string, BulletState>>(() => {
     const init: Record<string, BulletState> = {};
     for (const diff of result.diff) {
@@ -140,7 +141,7 @@ export function ReviewPage({ result, onDone, onCoverLetter, user, tier, onDashbo
           Resume<span style={{ color: "var(--lime)" }}>AI</span>
         </button>
         {user ? (
-          <UserNav user={user} onDashboard={onDashboard} onSignOut={onSignOut} onNewResume={() => {}} />
+          <UserNav user={user} tier={tier} onDashboard={onDashboard} onSignOut={onSignOut} onNewResume={() => {}} onCancelSubscription={onCancelSubscription} />
         ) : (
           <span className="mono" style={{ color: "rgba(235,235,235,0.35)" }}>step 3 of 3 — review</span>
         )}
