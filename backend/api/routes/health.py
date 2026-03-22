@@ -46,12 +46,19 @@ async def health():
     if session_store == "in_memory_only":
         status = "degraded"
 
+    razorpay_key = bool(os.getenv("RAZORPAY_KEY_ID") and os.getenv("RAZORPAY_KEY_SECRET"))
+    razorpay_plan = os.getenv("RAZORPAY_PLAN_ID_INR", "")
+
     return {
         "status": status,
         "ai_providers": providers,
         "session_store": session_store,
         "supabase_backend": has_supabase_backend,
         "pdf_generator": "latex" if has_tectonic else "reportlab_fallback",
+        "razorpay": {
+            "keys_set": razorpay_key,
+            "plan_id_inr": razorpay_plan or "NOT SET",
+        },
         "tectonic_debug": {
             "found_at": tectonic_found,
             "backend_bin_path": _backend_bin,
