@@ -19,6 +19,7 @@ from typing import Optional
 import asyncio
 
 from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
 import utils.subscription_store as sub_store
@@ -103,6 +104,7 @@ async def create_subscription(req: SubscribeRequest, authorization: Optional[str
     })
     return {
         "subscription_id": subscription["id"],
+        "short_url": subscription.get("short_url", ""),
         "key_id": _KEY_ID,
         "currency": currency,
     }
@@ -228,6 +230,43 @@ async def webhook(request: Request):
         )
 
     return {"ok": True}
+
+
+# ── Payment callback (redirect flow) ─────────────────────────────────────────
+
+_FRONTEND_URL = os.getenv("FRONTEND_URL", "https://resume-ai-omega-nine.vercel.app")
+
+@router.get("/razorpay/callback")
+async def payment_callback(
+    razorpay_payment_id: str = "",
+    razorpay_subscription_id: str = "",
+    razorpay_signature: str = "",
+):
+    """Razorpay redirects here after hosted checkout payment. Verify + upgrade user."""
+    if not razorpay_payment_id or not razorpay_subscription_id or not razorpay_signature:
+        return RedirectResponse(f"{_FRONTEND_URL}?payment=failed")
+
+    msg = f"{razorpay_payment_id}|{razorpay_subscription_id}".encode()
+    expected = hmac.new(_KEY_SECRET.encode(), msg, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, razorpay_signature):
+        return RedirectResponse(f"{_FRONTEND_URL}?payment=failed")
+
+    # Look up user_id from subscription notes
+    sub_data = _get(f"/subscriptions/{razorpay_subscription_id}")
+    user_id = sub_data.get("notes", {}).get("user_id", "")
+    if not user_id:
+        return RedirectResponse(f"{_FRONTEND_URL}?payment=failed")
+
+    period_end = _unix_to_iso(sub_data.get("current_end"))
+    sub_store.upsert_subscription(
+        user_id=user_id,
+        tier="pro",
+        stripe_customer_id=None,
+        stripe_subscription_id=razorpay_subscription_id,
+        status="active",
+        period_end=period_end,
+    )
+    return RedirectResponse(f"{_FRONTEND_URL}?payment=success")
 
 
 # ── Get subscription info ─────────────────────────────────────────────────────

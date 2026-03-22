@@ -74,8 +74,13 @@ export default function App() {
       setUser(u);
       if (u) {
         fetchTier(u.id);
-        // Restore authenticated users to dashboard on refresh instead of landing
-        setStep(prev => prev === "admin" ? "admin" : "dashboard");
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("payment") === "success") {
+          window.history.replaceState({}, "", window.location.pathname);
+          setStep("dashboard");
+        } else {
+          setStep(prev => prev === "admin" ? "admin" : "dashboard");
+        }
       }
       setSessionReady(true);
     });
