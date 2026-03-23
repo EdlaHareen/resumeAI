@@ -440,14 +440,14 @@ Stage 4 already computes per-bullet certainty but doesn't return it to the front
 - `frontend/src/api/client.ts` — replaced `createCheckoutSession` with `createRazorpaySubscription` + `verifyRazorpayPayment`. `getUserSubscription` now calls `/api/razorpay/subscription/`.
 - `frontend/src/components/UpgradeModal.tsx` — Razorpay JS popup instead of Stripe redirect. INR/USD currency toggle (defaults by `navigator.language`). Success screen with "Reload now" button.
 
-### Razorpay Env Vars
+### Razorpay Env Vars (updated session 8 — Orders API)
 ```
 RAZORPAY_KEY_ID=rzp_test_...
 RAZORPAY_KEY_SECRET=...
-RAZORPAY_WEBHOOK_SECRET=...
-RAZORPAY_PLAN_ID_INR=plan_...   # ₹749/month
-RAZORPAY_PLAN_ID_USD=plan_...   # $9/month
+RAZORPAY_AMOUNT_INR=74900   # paise = ₹749 (optional, default hardcoded)
+RAZORPAY_AMOUNT_USD=900     # cents = $9 (optional, default hardcoded)
 ```
+Note: RAZORPAY_PLAN_ID_INR/USD removed — switched from Subscriptions to Orders API.
 
 ### ATS Score Overhaul
 - `backend/utils/scoring.py` — `compute_ats_score` now takes `jd_analysis` + `resume_text` params. 10 real signals across contact completeness (23pts), section structure (23pts), keyword density vs JD (20pts), bullet quality/quantification (15pts), layout safety (14pts), content depth (5pts). Produces realistic 45–90% spread instead of always 100%.
@@ -457,3 +457,50 @@ RAZORPAY_PLAN_ID_USD=plan_...   # $9/month
 - Haiku generates 10–15 questions from tailored resume + JD
 - Sonnet evaluates user answers against STAR framework
 - Gate behind Premium tier
+
+## What Was Implemented (v5 — Session 7)
+
+### Frontend-Backend Alignment (all committed)
+- `razorpay_routes.py` — Authorization header optional (`Header(None)`) with explicit 401
+- `admin.py` — `_verify_admin` optional header; reads `SUPABASE_ANON_KEY` (removed `VITE_` fallback)
+- `cover_letter.py` — `CoverLetterPdfRequest.resume_summary` changed to `Dict[str, Any]`; duplicate `CoverLetterTextResponse` removed, now imports `CoverLetterResponse` from `responses.py`
+- `responses.py` — `CoverLetterResponse` has all 4 fields: `cover_letter`, `hiring_manager`, `company_name`, `job_title`
+- `types/index.ts` — `DownloadRequest` gains `user_id?`; `BulletDiff.injected_keywords` made optional (`string[]?`)
+- `BulletRow.tsx` — all `injected_keywords` accesses guarded with `?? []`
+- `.env.example` + `backend/.env.example` — added all Razorpay vars + `SUPABASE_ANON_KEY`
+
+### tectonic / PDF Generator Fix
+- `latex_generator.py` — `_get_tectonic()` self-downloads tectonic 0.15.0 to `backend/bin/` at runtime if not found on PATH. Eliminates dependency on build.sh running correctly.
+- `health.py` — exposes `pdf_generator: "latex" | "reportlab_fallback"` in `/api/health`
+- `download.py` — logs which generator was used (latex vs reportlab)
+- Render environment: `$HOME=/opt/render`, project at `/opt/render/project/src`, `rootDir: backend` in `render.yaml`
+
+### Required Render Environment Variables
+```
+ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-...
+ALLOWED_ORIGINS=https://resume-ai-omega-nine.vercel.app
+SUPABASE_URL=https://...supabase.co
+SUPABASE_SERVICE_ROLE_KEY=...
+SUPABASE_ANON_KEY=...        # same as VITE_SUPABASE_ANON_KEY, used by admin routes
+RAZORPAY_KEY_ID=rzp_...
+RAZORPAY_KEY_SECRET=...
+RAZORPAY_WEBHOOK_SECRET=...
+RAZORPAY_PLAN_ID_INR=plan_...
+RAZORPAY_PLAN_ID_USD=plan_...
+```
+Note: Redis not configured → `session_store: in_memory_only` (sessions lost on restart/spin-down)
+
+### PDF Preview Feature (60/40 split layout)
+- `frontend/src/components/PreviewPanel.tsx` — NEW. Props: `fetchPdf: () => Promise<Blob>`. Auto-loads on mount, "Refresh Preview" button, spinner overlay, object URL cleanup. Uses `fetchPdfRef` pattern to always capture latest state.
+- `ReviewPage.tsx` — 60/40 flex split: left scrollable review, right `PreviewPanel` → `/api/download/pdf`
+- `CoverLetterPage.tsx` — 60/40 flex split: left editor, right `PreviewPanel` → `/api/cover-letter/pdf`
+- Layout: `height: calc(100vh - 65px)`, both columns `overflowY: auto`
+
+### Admin Pro Access
+```sql
+-- Grant pro access to yourself
+INSERT INTO user_subscriptions (user_id, tier, status, updated_at)
+VALUES ('your-uuid', 'pro', 'active', now())
+ON CONFLICT (user_id) DO UPDATE SET tier = 'pro', status = 'active', updated_at = now();
+```
