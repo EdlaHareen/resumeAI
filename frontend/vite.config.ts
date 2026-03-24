@@ -7,9 +7,11 @@ export default defineConfig({
   envDir: "..",  // read .env from /resumeAI/ root instead of /resumeAI/frontend/
   server: {
     port: 5173,
+    host: true,
     proxy: {
       "/api": {
-        target: "http://localhost:8000",
+        // Inside Docker, use the service name 'backend'; locally use localhost
+        target: (globalThis as any).process?.env?.VITE_API_URL || "http://localhost:8000",
         changeOrigin: true,
       },
     },

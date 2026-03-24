@@ -18,6 +18,26 @@ def check_requirement(cmd, name):
         print(f"  [MISSING] {name} not found in PATH.")
         return False
 
+def check_docker_daemon():
+    try:
+        # Runs 'docker info' which fails if daemon is not running
+        subprocess.run(["docker", "info"], check=True, capture_output=True)
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
+
+def ensure_docker():
+    print("Checking if Docker daemon is running...")
+    while True:
+        if check_docker_daemon():
+            print("  [OK] Docker daemon is running.")
+            return True
+        print("\n[!] Docker daemon is not running or not accessible.")
+        print("Please ensure Docker Desktop is started and the daemon is active.")
+        retry = input("Press ENTER to try again, or 'q' to quit: ").strip().lower()
+        if retry == 'q':
+            sys.exit(1)
+
 def setup_env():
     if os.path.exists(".env"):
         print("\n[SKIP] .env file already exists.")
@@ -90,8 +110,12 @@ def main():
 
     if choice == "1":
         if not docker_ok:
-            print("\nERROR: Docker is not installed. Please install Docker or choose option 2.")
+            print("\nERROR: Docker is not installed (command 'docker' not found). Please install Docker or choose option 2.")
             return
+        
+        # Ensure daemon is running
+        ensure_docker()
+
         print("\n[RUN] Starting Docker Compose...")
         print("Command: docker-compose up --build")
         try:

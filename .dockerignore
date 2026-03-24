@@ -1,0 +1,36 @@
+# Git
+.git
+.gitignore
+
+# Python
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+backend/venv
+.python-version
+
+# Node.js
+**/node_modules
+**/dist
+**/build
+.npm
+frontend/node_modules
+
+# Environment
+.env
+.env.local
+
+# Docker
+docker-compose.override.yml
+
+# IDEs
+.vscode
+.idea
+.DS_Store
+
+# Artifacts
+brain/
+task.md
+implementation_plan.md
+walkthrough.md
