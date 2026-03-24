@@ -13,42 +13,48 @@ Tailor your resume for any job description. Upload a PDF or DOCX, paste a job de
 
 ## Setup
 
-### 1. API Keys
+The easiest way to get started is using the **Universal Setup Wizard**. 
+It handles your `.env` configuration, installs dependencies, and offers to run the project via Docker or locally.
 
-Create a `.env` file in the root directory by copying `.env.example`:
+### 1. One-Click Setup (Recommended)
+
+Run the following command in the root directory:
 
 ```bash
-cp .env.example .env
+python3 setup.py
 ```
 
-Add your keys to `.env`:
-- `ANTHROPIC_API_KEY`: Get one at [console.anthropic.com](https://console.anthropic.com)
-- `SUPABASE_URL` & `SUPABASE_SERVICE_ROLE_KEY`: From your Supabase project settings.
+Follow the prompts to enter your API keys. Once finished, choose **Option 1 (Docker)** to start the entire app instantly, or **Option 2** for a standard local installation.
 
-### 2. Backend
+### 2. Running with Docker Compose
 
-The backend requires Python 3.9 or higher.
+If you've already configured your `.env` file, you can start the project with a single command:
 
 ```bash
+docker-compose up --build
+```
+
+The frontend will be available at [http://localhost:5173](http://localhost:5173).
+
+### 3. Manual Local Setup
+
+If you prefer to run without Docker, follow the standard local installation:
+
+#### Backend
+```bash
 cd backend
-python3 -m venv .venv
-source .venv/bin/activate
+python3 -m venv venv
+source venv/bin/activate  # or venv\Scripts\activate on Windows
 pip install -r requirements.txt
 PYTHONPATH=. python3 -m uvicorn main:app --reload --port 8000
 ```
 
-> [!IMPORTANT]
-> Always run with `PYTHONPATH=.` to ensure internal modules are correctly imported.
-
-### 3. Frontend
-
+#### Frontend
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-
-The frontend will run at [http://localhost:5173](http://localhost:5173) and proxy API requests to the backend on port 8000.
 
 ## Troubleshooting
 

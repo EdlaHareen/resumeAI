@@ -37,7 +37,14 @@ If a file doesn't have the future import, use `Optional[dict]` instead of `dict 
 - **Vite Proxy**: If you change the backend port (default 8000), you must also update `frontend/vite.config.ts`.
 - **Uvicorn**: Use `--port 8000` to match the default frontend configuration.
 
-## 5. Deployment
+## 5. Dockerization
 
-- Use `build.sh` for production builds.
-- Ensure `tectonic` (LaTeX engine) is available in the production environment for PDF generation.
+This project is fully containerized. Use Docker to ensure consistency across different OS and Python versions.
+- **Backend Dockerfile**: Uses Python 3.9-slim.
+- **Frontend Dockerfile**: Uses Node 18-alpine.
+- **Orchestration**: Managed via `docker-compose.yml`.
+
+To rebuild containers after dependency changes:
+```bash
+docker-compose up --build
+```
