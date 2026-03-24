@@ -6,34 +6,39 @@ Tailor your resume for any job description. Upload a PDF or DOCX, paste a job de
 
 - **Frontend:** React 19 + TypeScript + Tailwind CSS 4 + Vite
 - **Backend:** Python FastAPI + Uvicorn
-- **AI:** Claude Haiku (parse/analyze) + Sonnet (rewrite/validate) with OpenAI GPT fallback
+- **AI:** Claude Haiku (parse/analyze) + Sonnet (rewrite/validate)
 - **Parsing:** pdfplumber (PDF), python-docx (DOCX)
-- **Output:** reportlab (PDF), python-docx (DOCX)
+- **Output:** Tectonic/LaTeX (Primary PDF), ReportLab (Fallback PDF), python-docx (DOCX)
+- **Persistence:** Supabase (Auth, Storage, Database)
 
 ## Setup
 
 ### 1. API Keys
 
-Copy the `.env` file and add your keys:
+Create a `.env` file in the root directory by copying `.env.example`:
 
-```
-ANTHROPIC_API_KEY=your-key-here
-OPENAI_API_KEY=your-key-here  # optional fallback
+```bash
+cp .env.example .env
 ```
 
-Get a Claude key at https://console.anthropic.com
+Add your keys to `.env`:
+- `ANTHROPIC_API_KEY`: Get one at [console.anthropic.com](https://console.anthropic.com)
+- `SUPABASE_URL` & `SUPABASE_SERVICE_ROLE_KEY`: From your Supabase project settings.
 
 ### 2. Backend
+
+The backend requires Python 3.9 or higher.
 
 ```bash
 cd backend
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn main:app --reload
+PYTHONPATH=. python3 -m uvicorn main:app --reload --port 8000
 ```
 
-Backend runs at http://localhost:8000
+> [!IMPORTANT]
+> Always run with `PYTHONPATH=.` to ensure internal modules are correctly imported.
 
 ### 3. Frontend
 
@@ -43,23 +48,20 @@ npm install
 npm run dev
 ```
 
-Frontend runs at http://localhost:5173
+The frontend will run at [http://localhost:5173](http://localhost:5173) and proxy API requests to the backend on port 8000.
 
-## How it works
+## Troubleshooting
 
-1. Upload your resume (PDF or DOCX)
-2. Paste the job description
-3. AI runs 4 stages: parse resume, analyze JD, rewrite bullets, validate (no hallucinations)
-4. Review a side-by-side diff -- accept, reject, or edit each changed bullet
-5. Download tailored resume as PDF or DOCX
+### Python Compatibility Errors
+If you see `TypeError: unsupported operand type(s) for |: 'type' and 'NoneType'`, it means you are running a Python version older than 3.10 and a file is missing `from __future__ import annotations`. 
+**Fix:** Ensure `from __future__ import annotations` is at the very top of the failing file.
 
-## Privacy
+### Backend Port Mismatch
+If the frontend shows 500 errors or fails to connect, check `frontend/vite.config.ts`. The proxy target must match the backend port (default 8000).
 
-Resumes are processed in memory with a 10-minute session TTL. Sessions are deleted immediately after download. Nothing is stored to disk or a database.
+### Missing Supabase Functions
+If tailored resumes are not visible or downloads fail, ensure your `SUPABASE_SERVICE_ROLE_KEY` is set correctly in `.env`. This key is required for storage and database access.
 
-## API
+## Development
 
-- `GET /health` -- service status
-- `POST /tailor` -- multipart: `resume_file` + `job_description`
-- `POST /download/pdf` -- JSON: `{ session_id, accepted_bullets }`
-- `POST /download/docx` -- JSON: `{ session_id, accepted_bullets }`
+See [DEVELOPMENT.md](./DEVELOPMENT.md) for guidelines on maintaining compatibility and adding new features.
