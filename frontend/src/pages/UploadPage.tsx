@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { UploadZone } from "../components/UploadZone";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { UserNav } from "../components/UserNav";
 import type { User } from "@supabase/supabase-js";
+import { getBaseResume, uploadBaseResume } from "../api/client";
+import { supabase } from "../lib/supabase";
 
 interface Props {
   onSubmit: (file: File, jd: string) => void;
@@ -20,15 +22,58 @@ const MIN_JD_WORDS = 50;
 export function UploadPage({ onSubmit, loading, error, onClearError, user, onDashboard, onSignOut, onLogoClick }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [jd, setJd] = useState("");
+  const [saveAsBase, setSaveAsBase] = useState(false);
+  const [baseResume, setBaseResume] = useState<{ found: boolean; filename?: string; storage_path?: string } | null>(null);
+  const [usingBase, setUsingBase] = useState(false);
+  const [hasLoadedBase, setHasLoadedBase] = useState(false);
+
+  useEffect(() => {
+    if (user && !hasLoadedBase && !file) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          getBaseResume(session.access_token)
+            .then((info) => {
+              if (info.found) {
+                setBaseResume(info);
+                setUsingBase(true);
+              }
+              setHasLoadedBase(true);
+            });
+        }
+      });
+    }
+  }, [user, hasLoadedBase, file]);
 
   const jdWordCount = jd.trim().split(/\s+/).filter(Boolean).length;
   const jdTooShort = jd.trim().length > 0 && jdWordCount < MIN_JD_WORDS;
-  const canSubmit = file !== null && jdWordCount >= MIN_JD_WORDS && !loading;
+  const canSubmit = (file !== null || usingBase) && jdWordCount >= MIN_JD_WORDS && !loading;
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!canSubmit || !file) return;
-    onSubmit(file, jd);
+    if (!canSubmit) return;
+
+    let finalFile = file;
+
+    try {
+      if (usingBase && !file && baseResume?.storage_path) {
+        // Download base resume to submit
+        const { data, error: dlError } = await supabase.storage.from("resumes").download(baseResume.storage_path);
+        if (dlError || !data) throw new Error("Failed to load your base resume.");
+        finalFile = new File([data], baseResume.filename || "resume.pdf", { type: data.type });
+      }
+
+      if (!finalFile) return;
+
+      if (saveAsBase && user) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) await uploadBaseResume(finalFile, session.access_token);
+      }
+
+      onSubmit(finalFile, jd);
+    } catch (err) {
+      console.error(err);
+      // We could set an error state here, but for now just log it
+    }
   }
 
   return (
@@ -73,10 +118,61 @@ export function UploadPage({ onSubmit, loading, error, onClearError, user, onDas
           <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
             {/* Resume upload */}
             <div className="bento-card" style={{ padding: "1.5rem" }}>
-              <label className="mono" style={{ display: "block", marginBottom: "1rem", color: "rgba(235,235,235,0.5)" }}>
-                your resume
-              </label>
-              <UploadZone file={file} onFileSelect={setFile} />
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                <label className="mono" style={{ color: "rgba(235,235,235,0.5)" }}>
+                  your resume
+                </label>
+                {usingBase && (
+                  <button
+                    type="button"
+                    onClick={() => { setUsingBase(false); setFile(null); }}
+                    style={{ background: "none", border: "none", color: "var(--lime)", fontSize: 12, cursor: "pointer", padding: 0, textDecoration: "underline" }}
+                  >
+                    Use a different file
+                  </button>
+                )}
+              </div>
+
+              {usingBase && baseResume ? (
+                <div style={{ 
+                  padding: "2rem", 
+                  border: "1px dashed var(--lime)", 
+                  borderRadius: "1rem", 
+                  background: "rgba(204,255,0,0.03)",
+                  textAlign: "center"
+                }}>
+                  <p style={{ color: "var(--white-primary)", fontWeight: 600, fontSize: 15 }}>
+                    Loaded: {baseResume.filename}
+                  </p>
+                  <p style={{ fontSize: 12, color: "rgba(235,235,235,0.4)", marginTop: "0.4rem" }}>
+                    Your stored base resume will be used for tailoring.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <UploadZone 
+                    file={file} 
+                    onFileSelect={(f) => {
+                      setFile(f);
+                      setUsingBase(false);
+                    }} 
+                  />
+                  {user && file && (
+                    <div style={{ marginTop: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      <input
+                        type="checkbox"
+                        id="saveAsBase"
+                        checked={saveAsBase}
+                        onChange={(e) => setSaveAsBase(e.target.checked)}
+                        style={{ cursor: "pointer" }}
+                      />
+                      <label htmlFor="saveAsBase" style={{ fontSize: 13, color: "rgba(235,235,235,0.6)", cursor: "pointer" }}>
+                        {baseResume?.found ? "Replace my current base resume with this one" : "Save this as my base resume for future use"}
+                      </label>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
             {/* Job description */}
@@ -168,3 +264,4 @@ export function UploadPage({ onSubmit, loading, error, onClearError, user, onDas
     </div>
   );
 }
+

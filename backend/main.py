@@ -18,6 +18,7 @@ from api.routes.stream import router as stream_router
 from api.routes.cover_letter import router as cover_letter_router
 from api.routes.razorpay_routes import router as razorpay_router
 from api.routes.admin import router as admin_router
+from api.routes.resumes import router as resumes_router
 
 app = FastAPI(title="ResumeAI API", version="1.0.0")
 app.state.limiter = limiter
@@ -62,3 +63,4 @@ app.include_router(stream_router, prefix="/api")
 app.include_router(cover_letter_router, prefix="/api")
 app.include_router(razorpay_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
+app.include_router(resumes_router, prefix="/api")

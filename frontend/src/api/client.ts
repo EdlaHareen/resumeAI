@@ -232,3 +232,33 @@ export async function cancelRazorpaySubscription(accessToken: string): Promise<v
     throw new Error(typeof err.detail === "string" ? err.detail : "Cancellation failed");
   }
 }
+
+export interface BaseResumeInfo {
+  found: boolean;
+  id?: string;
+  filename?: string;
+  storage_path?: string;
+}
+
+export async function getBaseResume(accessToken: string): Promise<BaseResumeInfo> {
+  const resp = await fetch(`${BASE}/resumes/base`, {
+    headers: { "Authorization": `Bearer ${accessToken}` },
+  });
+  if (!resp.ok) return { found: false };
+  return resp.json();
+}
+
+export async function uploadBaseResume(file: File, accessToken: string): Promise<void> {
+  const form = new FormData();
+  form.append("file", file);
+  const resp = await fetch(`${BASE}/resumes/base`, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${accessToken}` },
+    body: form,
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({ detail: "Upload failed" }));
+    throw new Error(typeof err.detail === "string" ? err.detail : "Upload failed");
+  }
+}
+

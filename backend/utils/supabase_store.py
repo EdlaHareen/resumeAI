@@ -31,8 +31,15 @@ def _req(method: str, table: str, body: Optional[bytes] = None, params: str = ""
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
             raw = resp.read().decode("utf-8")
-            return json.loads(raw) if raw.strip() else None
-    except (urllib.error.HTTPError, urllib.error.URLError, Exception):
+            if not raw.strip():
+                return True # Success with no content
+            return json.loads(raw)
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8")
+        print(f"DB Error ({method} {table}): {e.code} {e.reason} - {err_body}")
+        return None
+    except Exception as e:
+        print(f"DB Error ({method} {table}): {e}")
         return None
 
 
@@ -40,7 +47,8 @@ def download_file_from_storage(bucket: str, path: str) -> Optional[bytes]:
     """Download a file's raw bytes from Supabase Storage."""
     if not is_configured():
         return None
-    url = f"{_URL}/storage/v1/object/{bucket}/{path}"
+    quoted_path = "/".join(urllib.parse.quote(part, safe='') for part in path.split("/"))
+    url = f"{_URL}/storage/v1/object/{bucket}/{quoted_path}"
     req = urllib.request.Request(url=url, method="GET")
     req.add_header("Authorization", f"Bearer {_KEY}")
     req.add_header("apikey", _KEY)
@@ -56,7 +64,9 @@ def upload_file_to_storage(bucket: str, path: str, file_bytes: bytes, content_ty
     """Upload a file's raw bytes to Supabase Storage."""
     if not is_configured():
         return False
-    url = f"{_URL}/storage/v1/object/{bucket}/{path}"
+    # Ensure each path segment is quoted correctly
+    quoted_path = "/".join(urllib.parse.quote(part, safe='') for part in path.split("/"))
+    url = f"{_URL}/storage/v1/object/{bucket}/{quoted_path}"
     req = urllib.request.Request(url=url, method="POST", data=file_bytes)
     req.add_header("Authorization", f"Bearer {_KEY}")
     req.add_header("apikey", _KEY)
@@ -66,6 +76,10 @@ def upload_file_to_storage(bucket: str, path: str, file_bytes: bytes, content_ty
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
             return resp.status in (200, 201)
+    except urllib.error.HTTPError as e:
+        error_msg = e.read().decode("utf-8")
+        print(f"Error uploading to storage ({bucket}/{path}): {e.code} {e.reason} - {error_msg}")
+        return False
     except Exception as e:
         print(f"Error uploading to storage ({bucket}/{path}): {e}")
         return False
@@ -121,3 +135,39 @@ def update_accepted_bullets(session_id: str, accepted_bullets: dict) -> None:
     """Save the user's final bullet choices to the session record."""
     body = json.dumps({"accepted_bullets": accepted_bullets}).encode("utf-8")
     _req("PATCH", "tailor_sessions", body=body, params=f"session_id=eq.{urllib.parse.quote(session_id, safe='')}")
+
+
+def get_base_resume(user_id: str) -> Optional[Dict[str, Any]]:
+    """Fetch the default base resume for a user."""
+    rows = _req(
+        "GET",
+        "base_resumes",
+        params=f"user_id=eq.{urllib.parse.quote(user_id, safe='')}&is_default=eq.true&select=id,filename,storage_path",
+    )
+    if not rows or not isinstance(rows, list) or len(rows) == 0:
+        return None
+    return rows[0]
+
+
+def upsert_base_resume(user_id: str, filename: str, storage_path: str) -> bool:
+    """Set a resume as the default base for a user. Unsets previous defaults."""
+    # 1. Unset any existing default
+    _req(
+        "PATCH",
+        "base_resumes",
+        body=json.dumps({"is_default": False}).encode("utf-8"),
+        params=f"user_id=eq.{urllib.parse.quote(user_id, safe='')}&is_default=eq.true",
+    )
+    # 2. Insert new default
+    payload = {
+        "user_id": user_id,
+        "filename": filename,
+        "storage_path": storage_path,
+        "is_default": True,
+    }
+    resp = _req(
+        "POST",
+        "base_resumes",
+        body=json.dumps(payload).encode("utf-8"),
+    )
+    return resp is not None
