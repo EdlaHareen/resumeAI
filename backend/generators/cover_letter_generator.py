@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 LaTeX cover letter generator.
 Renders AI-generated cover letter data into a professionally formatted PDF

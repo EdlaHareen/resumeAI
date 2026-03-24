@@ -17,7 +17,7 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 _URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 _KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 # Anon key is needed as apikey when validating user JWTs via /auth/v1/user
-_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
+_ANON_KEY = os.getenv("VITE_SUPABASE_ANON_KEY", "") or os.getenv("SUPABASE_ANON_KEY", "")
 
 
 def _get(path: str, params: str = "") -> Any:

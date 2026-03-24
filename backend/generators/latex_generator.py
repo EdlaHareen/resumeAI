@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 LaTeX resume generator — mirrors the DOCX generator structure exactly.
 Centered header, ruled uppercase section headers, two-column entry lines, bullet lists.
@@ -12,16 +13,27 @@ import subprocess
 import tarfile
 import tempfile
 import urllib.request
+import platform
 from typing import Dict
 
 logger = logging.getLogger(__name__)
 
 _TECTONIC_VERSION = "0.15.0"
-_TECTONIC_URL = (
-    f"https://github.com/tectonic-typesetting/tectonic/releases/download/"
-    f"tectonic%40{_TECTONIC_VERSION}/"
-    f"tectonic-{_TECTONIC_VERSION}-x86_64-unknown-linux-musl.tar.gz"
-)
+
+def _get_tectonic_url() -> str:
+    system = platform.system().lower()
+    machine = platform.machine().lower()
+    base = f"https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%40{_TECTONIC_VERSION}/"
+
+    if system == "darwin":
+        if machine in ("arm64", "aarch64"):
+            return f"{base}tectonic-{_TECTONIC_VERSION}-aarch64-apple-darwin.tar.gz"
+        return f"{base}tectonic-{_TECTONIC_VERSION}-x86_64-apple-darwin.tar.gz"
+    
+    # Default to Linux x86_64
+    return f"{base}tectonic-{_TECTONIC_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+
+
 _BIN_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "bin"))
 _TECTONIC_BIN = os.path.join(_BIN_DIR, "tectonic")
 
@@ -35,15 +47,17 @@ def _get_tectonic() -> str:
     # 2. Previously downloaded to backend/bin/
     if os.path.exists(_TECTONIC_BIN):
         return _TECTONIC_BIN
-    # 3. macOS Homebrew
-    if os.path.exists("/opt/homebrew/bin/tectonic"):
-        return "/opt/homebrew/bin/tectonic"
+    # 3. macOS Homebrew (common locations)
+    for p in ["/opt/homebrew/bin/tectonic", "/usr/local/bin/tectonic"]:
+        if os.path.exists(p):
+            return p
 
     # 4. Download and cache in backend/bin/
-    logger.info("tectonic not found — downloading %s", _TECTONIC_URL)
+    url = _get_tectonic_url()
+    logger.info("tectonic not found — downloading %s", url)
     os.makedirs(_BIN_DIR, exist_ok=True)
     try:
-        with urllib.request.urlopen(_TECTONIC_URL, timeout=120) as resp:
+        with urllib.request.urlopen(url, timeout=120) as resp:
             data = resp.read()
         with tarfile.open(fileobj=io.BytesIO(data)) as tar:
             tar.extractall(_BIN_DIR)

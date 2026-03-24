@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Shared JWT verification via Supabase Auth API.
 Used by routes that need to authenticate callers without requiring admin access.

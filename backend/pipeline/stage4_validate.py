@@ -1,4 +1,6 @@
+from __future__ import annotations
 import json
+from typing import Optional
 from ai.client import call_llm_json
 from ai.router import select_model
 from ai.prompts import STAGE4_SYSTEM, STAGE4_PROMPT

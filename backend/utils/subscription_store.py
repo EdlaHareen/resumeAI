@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Supabase subscription + usage tracking.
 Tables required:
@@ -11,7 +12,7 @@ import urllib.request
 from datetime import datetime
 from typing import Optional
 
-_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
+_URL = (os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL", "")).rstrip("/")
 _KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 
 FREE_MONTHLY_LIMIT = 3

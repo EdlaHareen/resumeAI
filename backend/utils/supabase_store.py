@@ -1,8 +1,4 @@
-"""
-Supabase persistence for tailor sessions.
-Uses service role key (bypasses RLS) — NEVER expose this key to clients.
-Gracefully no-ops if SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY are not configured.
-"""
+from __future__ import annotations
 import json
 import os
 import urllib.error
@@ -10,7 +6,7 @@ import urllib.parse
 import urllib.request
 from typing import Any, Dict, Optional
 
-_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
+_URL = (os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL", "")).rstrip("/")
 _KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 
 
@@ -40,6 +36,47 @@ def _req(method: str, table: str, body: Optional[bytes] = None, params: str = ""
         return None
 
 
+def download_file_from_storage(bucket: str, path: str) -> Optional[bytes]:
+    """Download a file's raw bytes from Supabase Storage."""
+    if not is_configured():
+        return None
+    url = f"{_URL}/storage/v1/object/{bucket}/{path}"
+    req = urllib.request.Request(url=url, method="GET")
+    req.add_header("Authorization", f"Bearer {_KEY}")
+    req.add_header("apikey", _KEY)
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            return resp.read()
+    except Exception as e:
+        print(f"Error downloading from storage ({bucket}/{path}): {e}")
+        return None
+
+
+def upload_file_to_storage(bucket: str, path: str, file_bytes: bytes, content_type: str) -> bool:
+    """Upload a file's raw bytes to Supabase Storage."""
+    if not is_configured():
+        return False
+    url = f"{_URL}/storage/v1/object/{bucket}/{path}"
+    req = urllib.request.Request(url=url, method="POST", data=file_bytes)
+    req.add_header("Authorization", f"Bearer {_KEY}")
+    req.add_header("apikey", _KEY)
+    req.add_header("Content-Type", content_type)
+    # x-upsert header to overwrite if exists
+    req.add_header("x-upsert", "true")
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            return resp.status in (200, 201)
+    except Exception as e:
+        print(f"Error uploading to storage ({bucket}/{path}): {e}")
+        return False
+
+
+def update_session_pdf_path(session_id: str, pdf_storage_path: str) -> None:
+    """Save the path to the generated PDF in the session record."""
+    body = json.dumps({"pdf_storage_path": pdf_storage_path}).encode("utf-8")
+    _req("PATCH", "tailor_sessions", body=body, params=f"session_id=eq.{urllib.parse.quote(session_id, safe='')}")
+
+
 def save_session(
     session_id: str,
     user_id: Optional[str],
@@ -48,6 +85,7 @@ def save_session(
     resume_structured: dict,
     rewrites: dict,
     response: dict,
+    base_resume_id: Optional[str] = None,
 ) -> None:
     """Upsert full pipeline session to Supabase tailor_sessions table."""
     jd_words = jd_text.strip().split()
@@ -60,6 +98,7 @@ def save_session(
         "resume_structured": resume_structured,
         "rewrites": rewrites,
         "response": response,
+        "base_resume_id": base_resume_id,
     }
     body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     # Use upsert so re-runs or retries don't fail on duplicate session_id
