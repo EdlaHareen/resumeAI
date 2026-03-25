@@ -5,6 +5,9 @@ import { UserNav } from "../components/UserNav";
 import type { User } from "@supabase/supabase-js";
 import { getBaseResume, uploadBaseResume } from "../api/client";
 import { supabase } from "../lib/supabase";
+import { TemplateId, Tier } from "../types";
+import { TEMPLATES, TemplateThumbnail, TemplatePreviewModal } from "../components/TemplateMockup";
+import { Lock } from "lucide-react"; // I'll check if lucide is available, if not I'll use a string or SVG
 
 interface Props {
   onSubmit: (file: File, jd: string) => void;
@@ -15,17 +18,25 @@ interface Props {
   onDashboard: () => void;
   onSignOut: () => void;
   onLogoClick: () => void;
+  tier: Tier;
+  templateId: TemplateId;
+  onTemplateChange: (id: TemplateId) => void;
+  onUpgrade: () => void;
 }
 
 const MIN_JD_WORDS = 50;
 
-export function UploadPage({ onSubmit, loading, error, onClearError, user, onDashboard, onSignOut, onLogoClick }: Props) {
+export function UploadPage({ 
+  onSubmit, loading, error, onClearError, user, onDashboard, onSignOut, onLogoClick, 
+  tier, templateId, onTemplateChange, onUpgrade 
+}: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [jd, setJd] = useState("");
   const [saveAsBase, setSaveAsBase] = useState(false);
   const [baseResume, setBaseResume] = useState<{ found: boolean; filename?: string; storage_path?: string } | null>(null);
   const [usingBase, setUsingBase] = useState(false);
   const [hasLoadedBase, setHasLoadedBase] = useState(false);
+  const [previewTemplate, setPreviewTemplate] = useState<typeof TEMPLATES[number] | null>(null);
 
   useEffect(() => {
     if (user && !hasLoadedBase && !file) {
@@ -175,6 +186,99 @@ export function UploadPage({ onSubmit, loading, error, onClearError, user, onDas
               )}
             </div>
 
+            {/* Template Gallery */}
+            <div className="bento-card" style={{ padding: "1.5rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "1rem" }}>
+                <label className="mono" style={{ color: "rgba(235,235,235,0.5)" }}>
+                  resume template
+                </label>
+                <div style={{ fontSize: 11, color: "var(--lime)", fontWeight: 600 }}>
+                  {TEMPLATES.find(t => t.id === templateId)?.label}
+                </div>
+              </div>
+
+              <div style={{ 
+                display: "flex", 
+                gap: "1.25rem", 
+                overflowX: "auto", 
+                padding: "4px 4px 1rem 4px",
+                margin: "0 -4px",
+                scrollbarWidth: "none",
+                msOverflowStyle: "none",
+                WebkitOverflowScrolling: "touch"
+              }}>
+                {TEMPLATES.map((t) => {
+                  const isActive = t.id === templateId;
+                  const isLocked = t.pro && tier !== "pro";
+
+                  return (
+                    <div 
+                      key={t.id}
+                      onClick={() => setPreviewTemplate(t)}
+                      style={{
+                        flex: "0 0 130px",
+                        cursor: "pointer",
+                        position: "relative",
+                        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.transform = "translateY(-4px)")}
+                      onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0)")}
+                    >
+                      <div style={{
+                        borderRadius: "0.75rem",
+                        overflow: "hidden",
+                        border: `2px solid ${isActive ? "var(--lime)" : "rgba(255,255,255,0.06)"}`,
+                        position: "relative",
+                        aspectRatio: "1 / 1.41",
+                        background: "rgba(255,255,255,0.02)"
+                      }}>
+                        <TemplateThumbnail id={t.id} />
+                        
+                        {isLocked && (
+                          <div style={{
+                            position: "absolute",
+                            inset: 0,
+                            background: "rgba(0,0,0,0.5)",
+                            backdropFilter: "blur(1px)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center"
+                          }}>
+                            <span style={{ fontSize: "1.25rem" }}>🔒</span>
+                          </div>
+                        )}
+                        
+                        {isActive && (
+                          <div style={{
+                            position: "absolute",
+                            top: 8,
+                            right: 8,
+                            background: "var(--lime)",
+                            color: "#000",
+                            borderRadius: "50%",
+                            width: 20,
+                            height: 20,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: 12,
+                            fontWeight: 800,
+                            boxShadow: "0 4px 10px rgba(0,0,0,0.3)"
+                          }}>
+                            ✓
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ marginTop: "0.6rem", textAlign: "center" }}>
+                        <div style={{ fontSize: 12, color: isActive ? "var(--lime)" : "var(--white-primary)", fontWeight: 600 }}>{t.label}</div>
+                        {t.pro && <div style={{ fontSize: 9, color: "rgba(235,235,235,0.3)", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 2 }}>PRO</div>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Job description */}
             <div className="bento-card" style={{ padding: "1.5rem" }}>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "1rem" }}>
@@ -259,6 +363,16 @@ export function UploadPage({ onSubmit, loading, error, onClearError, user, onDas
           Your resume is processed in memory and never stored on our servers.
         </p>
       </main>
+
+      {previewTemplate && (
+        <TemplatePreviewModal 
+          template={previewTemplate}
+          tier={tier}
+          onSelect={(id) => { onTemplateChange(id); setPreviewTemplate(null); }}
+          onUpgrade={() => { setPreviewTemplate(null); onUpgrade(); }}
+          onClose={() => setPreviewTemplate(null)}
+        />
+      )}
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>

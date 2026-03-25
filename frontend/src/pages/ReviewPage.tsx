@@ -6,7 +6,7 @@ import { DownloadBar } from "../components/DownloadBar";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { UserNav } from "../components/UserNav";
 import { PreviewPanel } from "../components/PreviewPanel";
-import type { TailorResponse, BulletState, DownloadRequest, Tier, UpgradeReason } from "../types";
+import type { TailorResponse, BulletState, DownloadRequest, Tier, UpgradeReason, TemplateId } from "../types";
 import { downloadFile } from "../api/client";
 import type { User } from "@supabase/supabase-js";
 
@@ -21,6 +21,7 @@ interface Props {
   onLogoClick: () => void;
   onUpgrade: (reason: UpgradeReason) => void;
   onCancelSubscription?: () => void;
+  templateId: TemplateId;
 }
 
 function triggerDownload(blob: Blob, filename: string) {
@@ -32,7 +33,11 @@ function triggerDownload(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export function ReviewPage({ result, onDone, onCoverLetter, user, tier, onDashboard, onSignOut, onLogoClick, onUpgrade, onCancelSubscription }: Props) {
+export function ReviewPage({ 
+  result, onDone, onCoverLetter, user, tier, 
+  onDashboard, onSignOut, onLogoClick, 
+  onUpgrade, onCancelSubscription, templateId 
+}: Props) {
   const [bulletStates, setBulletStates] = useState<Record<string, BulletState>>(() => {
     const init: Record<string, BulletState> = {};
     for (const diff of result.diff) {
@@ -71,7 +76,7 @@ export function ReviewPage({ result, onDone, onCoverLetter, user, tier, onDashbo
       else if (state.choice === "edit") accepted[diff.bullet_id] = state.editedText;
       else accepted[diff.bullet_id] = "original";
     }
-    return { session_id: result.session_id, accepted_bullets: accepted };
+    return { session_id: result.session_id, accepted_bullets: accepted, template_id: templateId };
   }
 
   async function handleDownload(format: "pdf" | "docx") {

@@ -61,10 +61,13 @@ export interface TailorResponse {
   changed_bullets: number;
 }
 
+export type TemplateId = "jake" | "modern" | "soham" | "overleaf";
+
 export interface DownloadRequest {
   session_id: string;
   accepted_bullets: Record<string, string>; // bullet_id -> text or "original"
   user_id?: string;
+  template_id?: TemplateId;
 }
 
 // Bullet state during review

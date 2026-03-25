@@ -14,7 +14,25 @@ import tarfile
 import tempfile
 import urllib.request
 import platform
-from typing import Dict
+from typing import Dict, Optional, Tuple, List
+from dataclasses import dataclass
+
+@dataclass
+class TemplateConfig:
+    template_id: str
+    font_size: int                                # LaTeX document font size in pt
+    margins: Tuple[float, float, float, float]    # (top, bottom, left, right) in inches
+    section_style: str                            # Controls \titleformat
+    bullet_char: str                              # LaTeX bullet: r"\textbullet" or r"$\circ$"
+    accent_rgb: Optional[Tuple[int, int, int]] = None  # None = monochrome
+    glyphtounicode: bool = False                  # Adds \usepackage{glyphtounicode} + \pdfgentounicode=1
+
+def _build_registry() -> Dict[str, TemplateConfig]:
+    from generators.templates import jake, modern, soham, overleaf
+    return {t.CONFIG.template_id: t.CONFIG for t in [jake, modern, soham, overleaf]}
+
+_TEMPLATE_REGISTRY: Dict[str, TemplateConfig] = _build_registry()
+VALID_TEMPLATES = frozenset(_TEMPLATE_REGISTRY.keys())
 
 logger = logging.getLogger(__name__)
 
@@ -417,30 +435,67 @@ def _render_generic_section(section: dict) -> str:
     return "\n".join(lines)
 
 
-# ---------------------------------------------------------------------------
-# LaTeX preamble — matches DOCX margins and style
-# ---------------------------------------------------------------------------
+def _build_preamble(cfg: TemplateConfig) -> str:
+    top, bot, left, right = cfg.margins
+    lines = [
+        rf"\documentclass[{cfg.font_size}pt,letterpaper]{{article}}",
+        rf"\usepackage[top={top}in,bottom={bot}in,left={left}in,right={right}in]{{geometry}}",
+        r"\usepackage{titlesec}",
+        r"\usepackage{enumitem}",
+        r"\usepackage[hidelinks]{hyperref}",
+        r"\usepackage{parskip}",
+        r"\pagenumbering{gobble}",
+    ]
 
-LATEX_PREAMBLE = r"""\documentclass[10pt,letterpaper]{article}
+    # Color setup
+    if cfg.accent_rgb:
+        r, g, b = cfg.accent_rgb
+        lines.append(r"\usepackage[dvipsnames,svgnames]{xcolor}")
+        lines.append(rf"\definecolor{{accent}}{{RGB}}{{{r},{g},{b}}}")
+    elif cfg.section_style == "scshape_rule":
+        lines.append(r"\usepackage[dvipsnames,svgnames]{xcolor}")
 
-\usepackage[top=0.5in,bottom=0.5in,left=0.5in,right=0.5in]{geometry}
-\usepackage{titlesec}
-\usepackage{enumitem}
-\usepackage[hidelinks]{hyperref}
-\usepackage{parskip}
+    if cfg.glyphtounicode:
+        lines += [r"\usepackage{glyphtounicode}", r"\pdfgentounicode=1"]
 
-\pagenumbering{gobble}
+    lines.append(r"\setcounter{secnumdepth}{0}")
 
-% Section heading: bold uppercase with bottom rule (matches DOCX _add_section_header)
-\setcounter{secnumdepth}{0}
-\titleformat{\section}{\bfseries\normalsize}{}{0em}{\MakeUppercase}[\vspace{-4pt}\rule{\linewidth}{0.4pt}]
-\titlespacing*{\section}{0pt}{8pt}{4pt}
+    # Section heading styles
+    if cfg.section_style == "uppercase_rule":
+        lines += [
+            r"\titleformat{\section}{\bfseries\normalsize}{}{0em}{\MakeUppercase}"
+            r"[\vspace{-4pt}\rule{\linewidth}{0.4pt}]",
+            r"\titlespacing*{\section}{0pt}{8pt}{4pt}",
+        ]
+    elif cfg.section_style == "colored_bar":
+        lines += [
+            r"\titleformat{\section}{\large\bfseries\color{accent}}{}{0em}{}"
+            r"[{\color{accent}\titlerule[1.5pt]}]",
+            r"\titlespacing{\section}{0pt}{10pt}{6pt}",
+        ]
+    elif cfg.section_style == "scshape_rule":
+        lines += [
+            r"\titleformat{\section}{\scshape\raggedright\large}{}{0em}{}[\color{black}\titlerule]",
+            r"\titlespacing*{\section}{0pt}{8pt}{4pt}",
+        ]
 
-% Tight bullets matching DOCX List Bullet style
-\setlist[itemize]{noitemsep, topsep=2pt, leftmargin=0.2in, label=\textbullet}
+    lines.append(
+        rf"\setlist[itemize]{{noitemsep,topsep=2pt,leftmargin=0.2in,label={cfg.bullet_char}}}"
+    )
 
-\begin{document}
-"""
+    if cfg.accent_rgb:
+        lines += [
+            r"\newcommand{\nametext}[1]{{\fontsize{20}{24}\selectfont\bfseries\color{accent}#1}}",
+            r"\newcommand{\datetext}[1]{\textcolor{accent}{#1}}",
+        ]
+    else:
+        lines += [
+            r"\newcommand{\nametext}[1]{{\Large\textbf{#1}}}",
+            r"\newcommand{\datetext}[1]{#1}",
+        ]
+
+    lines.append(r"\begin{document}")
+    return "\n".join(lines) + "\n"
 
 LATEX_POSTAMBLE = "\n\\end{document}\n"
 
@@ -449,7 +504,7 @@ LATEX_POSTAMBLE = "\n\\end{document}\n"
 # Main LaTeX document builder
 # ---------------------------------------------------------------------------
 
-def build_latex(resume: dict) -> str:
+def build_latex(resume: dict, cfg: TemplateConfig) -> str:
     body_parts = []
 
     body_parts.append(_render_header(resume))
@@ -481,7 +536,7 @@ def build_latex(resume: dict) -> str:
             if tex:
                 body_parts.append(tex)
 
-    result = LATEX_PREAMBLE
+    result = _build_preamble(cfg)
     for i, part in enumerate(body_parts):
         result += part
         if i < len(body_parts) - 1:
@@ -525,7 +580,10 @@ def compile_latex_to_pdf(latex_source: str) -> bytes:
 # Public API
 # ---------------------------------------------------------------------------
 
-def generate_pdf_latex(resume_structured: dict, accepted_bullets: Dict[str, str]) -> bytes:
+def generate_pdf_latex(resume_structured: dict, accepted_bullets: Dict[str, str], template_id: str = "jake") -> bytes:
+    if template_id not in VALID_TEMPLATES:
+        template_id = "jake"
+    cfg = _TEMPLATE_REGISTRY[template_id]
     resume = _apply_bullets(resume_structured, accepted_bullets)
-    latex_source = build_latex(resume)
+    latex_source = build_latex(resume, cfg)
     return compile_latex_to_pdf(latex_source)

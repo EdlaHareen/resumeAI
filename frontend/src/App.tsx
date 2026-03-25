@@ -42,7 +42,7 @@ import { UpgradeModal } from "./components/UpgradeModal";
 import { supabase, isSupabaseConfigured } from "./lib/supabase";
 import { saveToHistory } from "./lib/history";
 import { incrementAnonCount, anonLimitReached } from "./lib/subscription";
-import type { AppStep, TailorResponse, Tier, UpgradeReason } from "./types";
+import type { AppStep, TailorResponse, Tier, UpgradeReason, TemplateId } from "./types";
 import { startTailor, getUserSubscription, cancelRazorpaySubscription, ApiError } from "./api/client";
 // Note: createCheckoutSession removed — now using Razorpay via UpgradeModal directly
 import type { User } from "@supabase/supabase-js";
@@ -62,6 +62,13 @@ export default function App() {
   const [sessionReady, setSessionReady] = useState(false);
   const [tierReady, setTierReady] = useState(false);
   const [pendingUpgrade, setPendingUpgrade] = useState(false);
+  const [templateId, setTemplateId] = useState<TemplateId>(() => {
+    return (localStorage.getItem("resumeai_template") as TemplateId) || "jake";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("resumeai_template", templateId);
+  }, [templateId]);
 
   useEffect(() => {
     // Detect /admin URL — set step before auth resolves
@@ -248,9 +255,13 @@ export default function App() {
             error={error}
             onClearError={() => setError(null)}
             user={user}
+            tier={tier}
+            templateId={templateId}
+            onTemplateChange={setTemplateId}
             onDashboard={() => setStep("dashboard")}
             onSignOut={handleSignOut}
             onLogoClick={handleLogoClick}
+            onUpgrade={() => showUpgrade("tailor_limit")}
           />
         );
 
@@ -275,6 +286,7 @@ export default function App() {
             }}
             user={user}
             tier={tier}
+            templateId={templateId}
             onDashboard={() => setStep("dashboard")}
             onSignOut={handleSignOut}
             onLogoClick={handleLogoClick}

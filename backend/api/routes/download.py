@@ -65,6 +65,26 @@ def _resolve_bullets(resume_structured: dict, accepted_bullets: dict, rewrites: 
 
 @router.post("/download/pdf")
 async def download_pdf(req: DownloadRequest):
+    # Resolved template with safe fallback
+    template_id = req.template_id or "jake"
+    
+    # Gate: non-default templates require Pro
+    if template_id != "jake":
+        if not req.user_id:
+            raise HTTPException(
+                status_code=403,
+                detail={"code": "upgrade_required", "message": "Premium templates require a Pro account. Please sign in or upgrade."},
+            )
+        try:
+            tier = sub_store.get_tier(req.user_id)
+        except Exception:
+            tier = "free"
+        if tier != "pro":
+            raise HTTPException(
+                status_code=403,
+                detail={"code": "upgrade_required", "message": "This is a Pro template. Upgrade to unlock all layouts."},
+            )
+
     session = _get_session_data(req.session_id, req.user_id)
     resume_structured = session["resume_structured"]
     rewrites = session.get("rewrites", {})
@@ -72,8 +92,8 @@ async def download_pdf(req: DownloadRequest):
     final_bullets = _resolve_bullets(resume_structured, req.accepted_bullets, rewrites)
 
     try:
-        pdf_bytes = generate_pdf_latex(resume_structured, final_bullets)
-        logger.info("PDF generated via LaTeX/tectonic")
+        pdf_bytes = generate_pdf_latex(resume_structured, final_bullets, template_id=template_id)
+        logger.info("PDF generated via LaTeX/tectonic with template: %s", template_id)
     except RuntimeError as e:
         logger.warning("LaTeX generation failed, falling back to reportlab: %s", e)
         try:
