@@ -15,17 +15,8 @@ import tempfile
 import urllib.request
 import platform
 from typing import Dict, Optional, Tuple, List
-from dataclasses import dataclass
 
-@dataclass
-class TemplateConfig:
-    template_id: str
-    font_size: int                                # LaTeX document font size in pt
-    margins: Tuple[float, float, float, float]    # (top, bottom, left, right) in inches
-    section_style: str                            # Controls \titleformat
-    bullet_char: str                              # LaTeX bullet: r"\textbullet" or r"$\circ$"
-    accent_rgb: Optional[Tuple[int, int, int]] = None  # None = monochrome
-    glyphtounicode: bool = False                  # Adds \usepackage{glyphtounicode} + \pdfgentounicode=1
+from generators.latex_templates import TemplateConfig
 
 def _build_registry() -> Dict[str, TemplateConfig]:
     from generators.templates import jake, modern, soham, overleaf
