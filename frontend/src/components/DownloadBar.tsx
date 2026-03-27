@@ -37,7 +37,7 @@ export function DownloadBar({ onDownloadPDF, onDownloadDOCX, downloading, downlo
         gap: "1rem",
         flexWrap: "wrap",
       }}>
-        <p style={{ fontSize: 14, color: "rgba(235,235,235,0.5)" }}>
+        <p style={{ fontSize: 14, color: "var(--text-secondary)" }}>
           {downloaded ? "Resume saved to Downloads. Generate a cover letter or tailor another." : "Ready to download your tailored resume?"}
         </p>
         <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
@@ -136,7 +136,7 @@ export function DownloadBar({ onDownloadPDF, onDownloadDOCX, downloading, downlo
                 borderRadius: 9999,
                 border: "1px solid rgba(255,255,255,0.12)",
                 background: "transparent",
-                color: "rgba(235,235,235,0.5)",
+                color: "var(--text-secondary)",
                 fontSize: 13, fontWeight: 600,
                 cursor: "pointer",
                 fontFamily: "'Space Grotesk', sans-serif",

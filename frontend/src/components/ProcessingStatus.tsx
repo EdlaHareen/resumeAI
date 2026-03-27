@@ -66,7 +66,7 @@ export function ProcessingStatus({ currentStage }: Props) {
                       ? "rgba(204,255,0,0.5)"
                       : "rgba(255,255,255,0.1)"
                   }`,
-                  color: done ? "#10b981" : active ? "var(--lime)" : "rgba(235,235,235,0.3)",
+                  color: done ? "#10b981" : active ? "var(--lime)" : "var(--text-tertiary)",
                 }}
                 aria-hidden="true"
               >
@@ -86,7 +86,7 @@ export function ProcessingStatus({ currentStage }: Props) {
                     ? "#10b981"
                     : active
                     ? "var(--lime)"
-                    : "rgba(235,235,235,0.3)",
+                    : "var(--text-tertiary)",
                 }}
               >
                 {stage.label}

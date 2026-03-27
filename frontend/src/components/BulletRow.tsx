@@ -105,7 +105,7 @@ export function BulletRow({ diff, state, onChange }: Props) {
         letterSpacing: "0.1em",
         background: "rgba(255,255,255,0.05)",
         border: "1px solid rgba(255,255,255,0.08)",
-        color: "rgba(235,235,235,0.4)",
+        color: "var(--text-secondary)",
         fontFamily: "'JetBrains Mono', monospace",
       }}>
         {diff.section}
@@ -114,17 +114,17 @@ export function BulletRow({ diff, state, onChange }: Props) {
       <div style={{ display: "grid", gap: "1rem", gridTemplateColumns: "1fr 1fr" }}>
         {/* Original */}
         <div>
-          <p style={{ marginBottom: "0.4rem", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "rgba(235,235,235,0.3)" }}>
+          <p style={{ marginBottom: "0.4rem", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-tertiary)" }}>
             Original
           </p>
-          <p style={{ fontSize: 13, color: "rgba(235,235,235,0.4)", textDecoration: chosen === "reject" ? "none" : "line-through", textDecorationColor: "rgba(235,235,235,0.2)", lineHeight: 1.5 }}>
+          <p style={{ fontSize: 13, color: "var(--text-secondary)", textDecoration: chosen === "reject" ? "none" : "line-through", textDecorationColor: "var(--text-muted)", lineHeight: 1.5 }}>
             {diff.original}
           </p>
         </div>
 
         {/* Tailored */}
         <div>
-          <p style={{ marginBottom: "0.4rem", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "rgba(235,235,235,0.3)" }}>
+          <p style={{ marginBottom: "0.4rem", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-tertiary)" }}>
             Tailored
           </p>
           {isEditing ? (
@@ -173,7 +173,7 @@ export function BulletRow({ diff, state, onChange }: Props) {
                     borderRadius: 9999,
                     border: "1px solid rgba(255,255,255,0.1)",
                     background: "transparent",
-                    color: "rgba(235,235,235,0.5)",
+                    color: "var(--text-secondary)",
                     fontSize: 12,
                     fontWeight: 600,
                     cursor: "pointer",
@@ -188,7 +188,7 @@ export function BulletRow({ diff, state, onChange }: Props) {
             <p style={{
               fontSize: 13,
               fontWeight: chosen === "reject" ? 400 : 500,
-              color: chosen === "reject" ? "rgba(235,235,235,0.3)" : "var(--white-primary)",
+              color: chosen === "reject" ? "var(--text-tertiary)" : "var(--white-primary)",
               lineHeight: 1.5,
             }}>
               {chosen === "edit"
@@ -251,7 +251,7 @@ export function BulletRow({ diff, state, onChange }: Props) {
               borderRadius: 9999,
               border: `1px solid ${chosen === "accept" ? "rgba(204,255,0,0.5)" : "rgba(255,255,255,0.1)"}`,
               background: chosen === "accept" ? "rgba(204,255,0,0.12)" : "transparent",
-              color: chosen === "accept" ? "var(--lime)" : "rgba(235,235,235,0.4)",
+              color: chosen === "accept" ? "var(--lime)" : "var(--text-secondary)",
               fontSize: 12, fontWeight: 600, cursor: "pointer",
               fontFamily: "'Space Grotesk', sans-serif",
               transition: "all 0.15s",
@@ -269,7 +269,7 @@ export function BulletRow({ diff, state, onChange }: Props) {
               borderRadius: 9999,
               border: `1px solid ${chosen === "reject" ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.07)"}`,
               background: chosen === "reject" ? "rgba(255,255,255,0.08)" : "transparent",
-              color: chosen === "reject" ? "rgba(235,235,235,0.8)" : "rgba(235,235,235,0.35)",
+              color: chosen === "reject" ? "var(--text-primary)" : "var(--text-tertiary)",
               fontSize: 12, fontWeight: 600, cursor: "pointer",
               fontFamily: "'Space Grotesk', sans-serif",
               transition: "all 0.15s",
@@ -287,7 +287,7 @@ export function BulletRow({ diff, state, onChange }: Props) {
               borderRadius: 9999,
               border: `1px solid ${chosen === "edit" ? "rgba(99,102,241,0.5)" : "rgba(255,255,255,0.07)"}`,
               background: chosen === "edit" ? "rgba(99,102,241,0.12)" : "transparent",
-              color: chosen === "edit" ? "#818cf8" : "rgba(235,235,235,0.35)",
+              color: chosen === "edit" ? "#818cf8" : "var(--text-tertiary)",
               fontSize: 12, fontWeight: 600, cursor: "pointer",
               fontFamily: "'Space Grotesk', sans-serif",
               transition: "all 0.15s",
@@ -306,7 +306,7 @@ export function BulletRow({ diff, state, onChange }: Props) {
                 borderRadius: 9999,
                 border: "none",
                 background: "transparent",
-                color: "rgba(235,235,235,0.2)",
+                color: "var(--text-muted)",
                 cursor: "pointer",
                 display: "flex", alignItems: "center",
               }}

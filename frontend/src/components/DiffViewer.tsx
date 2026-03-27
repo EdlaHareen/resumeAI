@@ -18,8 +18,8 @@ export function DiffViewer({ diffs, bulletStates, onBulletChange, onAcceptAll, o
   if (diffs.length === 0) {
     return (
       <div className="bento-card" style={{ padding: "3rem", textAlign: "center" }}>
-        <p style={{ fontSize: 14, color: "rgba(235,235,235,0.5)" }}>No changes were suggested for your resume.</p>
-        <p style={{ marginTop: "0.5rem", fontSize: 12, color: "rgba(235,235,235,0.3)" }}>
+        <p style={{ fontSize: 14, color: "var(--text-secondary)" }}>No changes were suggested for your resume.</p>
+        <p style={{ marginTop: "0.5rem", fontSize: 12, color: "var(--text-tertiary)" }}>
           Your resume may already be well-matched to this job description.
         </p>
       </div>
@@ -30,7 +30,7 @@ export function DiffViewer({ diffs, bulletStates, onBulletChange, onAcceptAll, o
     <section aria-label="Resume changes">
       {/* Bulk actions */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
-        <p style={{ fontSize: 14, color: "rgba(235,235,235,0.5)" }}>
+        <p style={{ fontSize: 14, color: "var(--text-secondary)" }}>
           <span style={{ fontWeight: 700, color: "var(--white-primary)" }}>{diffs.length}</span> changes —{" "}
           <span style={{ fontWeight: 700, color: "var(--lime)" }}>{acceptedCount}</span> accepted
         </p>
@@ -61,7 +61,7 @@ export function DiffViewer({ diffs, bulletStates, onBulletChange, onAcceptAll, o
               borderRadius: 9999,
               border: "1px solid rgba(255,255,255,0.1)",
               background: "rgba(255,255,255,0.04)",
-              color: "rgba(235,235,235,0.6)",
+              color: "var(--text-secondary)",
               fontSize: 12,
               fontWeight: 600,
               cursor: "pointer",

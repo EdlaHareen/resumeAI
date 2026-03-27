@@ -1,14 +1,16 @@
 import { useState, useMemo } from "react";
-import { ScorePanel } from "../components/ScorePanel";
+import { InsightsPanel } from "../components/InsightsPanel";
 import { DiffViewer } from "../components/DiffViewer";
 import { EdgeCaseAlert } from "../components/EdgeCaseAlert";
-import { DownloadBar } from "../components/DownloadBar";
 import { ErrorBanner } from "../components/ErrorBanner";
-import { UserNav } from "../components/UserNav";
 import { PreviewPanel } from "../components/PreviewPanel";
+import { FileDown, MailPlus, CheckCheck, XCircle } from "lucide-react";
 import type { TailorResponse, BulletState, DownloadRequest, Tier, UpgradeReason, TemplateId } from "../types";
 import { downloadFile } from "../api/client";
 import type { User } from "@supabase/supabase-js";
+
+const SECTIONS = ["All", "Experience", "Projects", "Summary", "Skills", "Education"] as const;
+type Section = typeof SECTIONS[number];
 
 interface Props {
   result: TailorResponse;
@@ -33,10 +35,9 @@ function triggerDownload(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export function ReviewPage({ 
-  result, onDone, onCoverLetter, user, tier, 
-  onDashboard, onSignOut, onLogoClick, 
-  onUpgrade, onCancelSubscription, templateId 
+export function ReviewPage({
+  result, onDone, onCoverLetter, user, tier,
+  onUpgrade, templateId,
 }: Props) {
   const [bulletStates, setBulletStates] = useState<Record<string, BulletState>>(() => {
     const init: Record<string, BulletState> = {};
@@ -48,15 +49,20 @@ export function ReviewPage({
   const [downloading, setDownloading] = useState<"pdf" | "docx" | null>(null);
   const [downloaded, setDownloaded] = useState<"pdf" | "docx" | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
-  // Live projected match_percent based on current bullet accept/reject state
+  const [activeSection, setActiveSection] = useState<Section>("All");
+
+  const visibleDiffs = useMemo(() => {
+    if (activeSection === "All") return result.diff;
+    const normalizedSection = activeSection.toLowerCase();
+    return result.diff.filter((diff) => diff.section.toLowerCase().includes(normalizedSection));
+  }, [activeSection, result.diff]);
+
   const projectedMatchPercent = useMemo(() => {
     const allKeywords = [
       ...result.jd_analysis.ats_keywords,
       ...result.jd_analysis.required_skills,
     ];
     if (!allKeywords.length) return result.scores.match_percent;
-
-    // Unique added keywords from accepted/edited bullets
     const accepted = new Set<string>();
     for (const diff of result.diff) {
       const state = bulletStates[diff.bullet_id] ?? { choice: "accept", editedText: diff.tailored };
@@ -80,10 +86,7 @@ export function ReviewPage({
   }
 
   async function handleDownload(format: "pdf" | "docx") {
-    if (format === "docx" && tier !== "pro") {
-      onUpgrade("docx");
-      return;
-    }
+    if (format === "docx" && tier !== "pro") { onUpgrade("docx"); return; }
     setDownloading(format);
     setDownloadError(null);
     try {
@@ -92,8 +95,7 @@ export function ReviewPage({
       const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
       const jobTitle = slug(`${result.jd_analysis.role_level} ${result.jd_analysis.industry}`);
       const userName = slug(result.resume_summary.name);
-      const filename = `${jobTitle}_${userName}.${format}`;
-      triggerDownload(blob, filename);
+      triggerDownload(blob, `${jobTitle}_${userName}.${format}`);
       setDownloaded(format);
     } catch (e) {
       setDownloadError(e instanceof Error ? e.message : "Download failed. Please try again.");
@@ -108,143 +110,236 @@ export function ReviewPage({
 
   function handleAcceptAll() {
     const next: Record<string, BulletState> = {};
-    for (const diff of result.diff) {
-      next[diff.bullet_id] = { choice: "accept", editedText: diff.tailored };
-    }
+    for (const diff of result.diff) next[diff.bullet_id] = { choice: "accept", editedText: diff.tailored };
     setBulletStates(next);
   }
 
   function handleRejectAll() {
     const next: Record<string, BulletState> = {};
-    for (const diff of result.diff) {
-      next[diff.bullet_id] = { choice: "reject", editedText: diff.original };
-    }
+    for (const diff of result.diff) next[diff.bullet_id] = { choice: "reject", editedText: diff.original };
     setBulletStates(next);
   }
 
+  const acceptedCount = Object.values(bulletStates).filter((state) => state.choice === "accept" || state.choice === "edit").length;
+  const totalChanged = result.diff.length;
+  const previewRequest = useMemo(() => buildDownloadRequest(), [bulletStates, templateId, result.session_id]);
+  const previewRefreshKey = useMemo(() => JSON.stringify(previewRequest), [previewRequest]);
+
   return (
-    <div style={{ minHeight: "100vh", background: "var(--black)", fontFamily: "'Space Grotesk', sans-serif" }}>
-      {/* Nav */}
-      <nav style={{
-        position: "sticky",
-        top: 0,
-        zIndex: 20,
-        borderBottom: "1px solid rgba(255,255,255,0.06)",
-        padding: "1rem 2rem",
+    <div style={{
+      display: "flex",
+      height: "100%",
+      overflow: "hidden",
+      fontFamily: "'Inter', sans-serif",
+      background: "var(--bg)",
+    }}>
+
+      {/* ── Zone 1: PDF Preview (42%) ───────────────────── */}
+      <div style={{
+        flex: "0 0 42%",
+        maxWidth: "42%",
+        borderRight: "1px solid var(--border)",
         display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        background: "rgba(0,0,0,0.85)",
-        backdropFilter: "blur(16px)",
+        flexDirection: "column",
+        overflow: "hidden",
       }}>
-        <button
-          type="button"
-          onClick={onLogoClick}
-          style={{ fontWeight: 700, fontSize: 18, letterSpacing: "-0.01em", color: "var(--white-primary)", background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}
-          aria-label="Go to dashboard"
-        >
-          Resume<span style={{ color: "var(--lime)" }}>AI</span>
-        </button>
-        {user ? (
-          <UserNav user={user} tier={tier} onDashboard={onDashboard} onSignOut={onSignOut} onNewResume={() => {}} onCancelSubscription={onCancelSubscription} />
-        ) : (
-          <span className="mono" style={{ color: "rgba(235,235,235,0.35)" }}>step 3 of 3 — review</span>
-        )}
-      </nav>
-
-      {/* 60/40 split */}
-      <div style={{ display: "flex", height: "calc(100vh - 65px)" }}>
-
-      <main style={{ flex: "0 0 60%", maxWidth: "60%", overflowY: "auto", padding: "2.5rem 1.5rem 8rem" }}>
-        {/* Header */}
-        <div style={{ marginBottom: "2rem" }}>
-          <div className="mono" style={{ color: "var(--lime)", marginBottom: "0.5rem" }}>review changes</div>
-          <h1 style={{ fontSize: "1.75rem", fontWeight: 700, color: "var(--white-primary)", letterSpacing: "-0.02em" }}>
-            Review Changes
-          </h1>
-          <p style={{ marginTop: "0.5rem", fontSize: 14, color: "rgba(235,235,235,0.45)" }}>
-            {result.changed_bullets} of {result.total_bullets} bullets tailored for this role. Accept, reject, or edit each one.
-          </p>
+        <div style={{
+          padding: "0.875rem 1rem",
+          borderBottom: "1px solid var(--border)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexShrink: 0,
+        }}>
+          <span className="label">Preview</span>
+          <span className="pill pill-ghost" style={{ fontSize: 11 }}>
+            {acceptedCount}/{totalChanged} accepted
+          </span>
         </div>
-
-        {/* Scores */}
-        <div style={{ marginBottom: "1.5rem" }}>
-          <ScorePanel scores={result.scores} projectedMatchPercent={projectedMatchPercent} />
+        <div style={{ flex: 1, overflow: "auto", padding: "1rem" }}>
+          <PreviewPanel
+            fetchPdf={() => downloadFile("pdf", previewRequest, user?.id)}
+            refreshKey={previewRefreshKey}
+          />
         </div>
+      </div>
 
-        {/* Edge case alerts */}
-        {result.edge_cases.length > 0 && (
-          <div style={{ marginBottom: "1.5rem" }}>
-            <EdgeCaseAlert edgeCases={result.edge_cases} />
-          </div>
-        )}
-
-        {/* Download error */}
-        {downloadError && (
-          <div style={{ marginBottom: "1rem" }}>
-            <ErrorBanner message={downloadError} onDismiss={() => setDownloadError(null)} />
-          </div>
-        )}
-
-        {/* ATS Keywords */}
-        {result.jd_analysis.ats_keywords.length > 0 && (
-          <div className="bento-card" style={{ padding: "1.25rem 1.5rem", marginBottom: "1.5rem" }}>
-            <h2 className="mono" style={{ marginBottom: "1rem", color: "rgba(235,235,235,0.5)" }}>
-              ATS keywords detected
-            </h2>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-              {result.jd_analysis.ats_keywords.slice(0, 20).map((kw) => (
-                <span
-                  key={kw}
-                  style={{
-                    borderRadius: 9999,
-                    padding: "0.25rem 0.75rem",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    background: "rgba(204,255,0,0.08)",
-                    border: "1px solid rgba(204,255,0,0.2)",
-                    color: "var(--lime)",
-                  }}
-                >
-                  {kw}
-                </span>
-              ))}
+      {/* ── Zone 2: AI Editor (38%) ─────────────────────── */}
+      <div style={{
+        flex: "0 0 38%",
+        maxWidth: "38%",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        borderRight: "1px solid var(--border)",
+      }}>
+        {/* Editor toolbar */}
+        <div style={{
+          padding: "0.875rem 1rem 0",
+          borderBottom: "1px solid var(--border)",
+          flexShrink: 0,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.625rem" }}>
+            <span className="label">AI Suggestions</span>
+            <div style={{ display: "flex", gap: "0.375rem" }}>
+              <button
+                onClick={handleAcceptAll}
+                style={{
+                  display: "flex", alignItems: "center", gap: "0.3rem",
+                  padding: "0.3rem 0.625rem", borderRadius: 9999,
+                  background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.3)",
+                  color: "var(--green)", fontSize: 11, fontWeight: 600, cursor: "pointer",
+                  fontFamily: "'Inter', sans-serif", transition: "all 0.15s",
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = "rgba(52,211,153,0.18)")}
+                onMouseLeave={e => (e.currentTarget.style.background = "rgba(52,211,153,0.1)")}
+              >
+                <CheckCheck size={12} /> Accept All
+              </button>
+              <button
+                onClick={handleRejectAll}
+                style={{
+                  display: "flex", alignItems: "center", gap: "0.3rem",
+                  padding: "0.3rem 0.625rem", borderRadius: 9999,
+                  background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.25)",
+                  color: "var(--red)", fontSize: 11, fontWeight: 600, cursor: "pointer",
+                  fontFamily: "'Inter', sans-serif", transition: "all 0.15s",
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = "rgba(248,113,113,0.15)")}
+                onMouseLeave={e => (e.currentTarget.style.background = "rgba(248,113,113,0.08)")}
+              >
+                <XCircle size={12} /> Reject All
+              </button>
             </div>
           </div>
-        )}
 
-        {/* Diff viewer */}
-        <DiffViewer
-          diffs={result.diff}
-          bulletStates={bulletStates}
-          onBulletChange={handleBulletChange}
-          onAcceptAll={handleAcceptAll}
-          onRejectAll={handleRejectAll}
-        />
-      </main>
+          {/* Section chips */}
+          <div style={{ display: "flex", gap: "0.25rem", overflowX: "auto", paddingBottom: "0.75rem", scrollbarWidth: "none" }}>
+            {SECTIONS.map(s => (
+              <button key={s} className={`section-chip${activeSection === s ? " active" : ""}`} onClick={() => setActiveSection(s)}>
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
 
-      {/* Right 40% — PDF preview */}
-      <aside style={{
-        flex: "0 0 40%",
-        maxWidth: "40%",
-        overflowY: "auto",
-        padding: "1.5rem",
-        borderLeft: "1px solid rgba(255,255,255,0.06)",
+        {/* Diffs */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "1rem 1rem 6rem" }}>
+          {downloadError && (
+            <div style={{ marginBottom: "1rem" }}>
+              <ErrorBanner message={downloadError} onDismiss={() => setDownloadError(null)} />
+            </div>
+          )}
+          {result.edge_cases.length > 0 && (
+            <div style={{ marginBottom: "1rem" }}>
+              <EdgeCaseAlert edgeCases={result.edge_cases} />
+            </div>
+          )}
+          {visibleDiffs.length === 0 ? (
+            <div
+              className="bento-card"
+              style={{
+                padding: "2rem 1.25rem",
+                textAlign: "center",
+                background: "var(--surface)",
+              }}
+            >
+              <p style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)", marginBottom: "0.35rem" }}>
+                No suggestions in {activeSection}
+              </p>
+              <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+                Try another section filter to review the rest of the tailored bullets.
+              </p>
+            </div>
+          ) : (
+            <DiffViewer
+              diffs={visibleDiffs}
+              bulletStates={bulletStates}
+              onBulletChange={handleBulletChange}
+              onAcceptAll={handleAcceptAll}
+              onRejectAll={handleRejectAll}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* ── Zone 3: Insights (20%) ──────────────────────── */}
+      <div style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        minWidth: 0,
       }}>
-        <PreviewPanel fetchPdf={() => downloadFile("pdf", buildDownloadRequest(), user?.id)} />
-      </aside>
+        <div style={{ padding: "0.875rem 1rem", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+          <span className="label">Insights</span>
+        </div>
+        <div style={{ flex: 1, overflowY: "auto" }}>
+          <InsightsPanel
+            scores={result.scores}
+            projectedMatchPercent={projectedMatchPercent}
+            atsKeywords={[...result.jd_analysis.ats_keywords, ...result.jd_analysis.required_skills]}
+            edgeCaseCount={result.edge_cases.length}
+          />
+        </div>
+      </div>
 
-      </div>{/* end split */}
+      {/* ── Floating action bar ──────────────────────────── */}
+      <div style={{
+        position: "fixed",
+        bottom: "1.5rem",
+        left: "50%",
+        transform: "translateX(-50%)",
+        zIndex: 50,
+        display: "flex",
+        alignItems: "center",
+        gap: "0.625rem",
+        padding: "0.625rem 0.875rem",
+        background: "rgba(17,17,24,0.92)",
+        backdropFilter: "blur(20px)",
+        border: "1px solid var(--border)",
+        borderRadius: "var(--r-2xl)",
+        boxShadow: "var(--shadow-lg)",
+      }}>
+        <button
+          onClick={() => handleDownload("pdf")}
+          disabled={downloading === "pdf"}
+          className="accent-btn"
+          style={{ fontSize: 13, padding: "0.5rem 1rem", gap: "0.4rem" }}
+        >
+          <FileDown size={14} />
+          {downloading === "pdf" ? "Exporting…" : downloaded === "pdf" ? "✓ PDF" : "Export PDF"}
+        </button>
 
-      <DownloadBar
-        onDownloadPDF={() => handleDownload("pdf")}
-        onDownloadDOCX={() => handleDownload("docx")}
-        downloading={downloading}
-        downloaded={downloaded}
-        onCoverLetter={onCoverLetter}
-        onDone={onDone}
-        tier={tier}
-      />
+        <button
+          onClick={() => handleDownload("docx")}
+          disabled={downloading === "docx"}
+          className="ghost-btn"
+          style={{ fontSize: 13, gap: "0.4rem" }}
+        >
+          <FileDown size={14} />
+          {tier !== "pro" ? "DOCX (Pro)" : downloading === "docx" ? "Exporting…" : "Export DOCX"}
+        </button>
+
+        <div style={{ width: 1, height: 24, background: "var(--border)" }} />
+
+        <button
+          onClick={onCoverLetter}
+          className="ghost-btn"
+          style={{ fontSize: 13, gap: "0.4rem" }}
+        >
+          <MailPlus size={14} />
+          {tier !== "pro" ? "Cover Letter (Pro)" : "Cover Letter"}
+        </button>
+
+        <button
+          onClick={onDone}
+          className="ghost-btn"
+          style={{ fontSize: 13 }}
+        >
+          Done
+        </button>
+      </div>
     </div>
   );
 }

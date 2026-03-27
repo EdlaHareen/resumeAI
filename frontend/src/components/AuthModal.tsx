@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import type { CSSProperties, FormEvent, MouseEvent, ReactNode, RefObject } from "react";
 import { X, ArrowRight, Eye, EyeOff, Zap, ShieldCheck, FileDown } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
@@ -10,15 +11,15 @@ interface AuthModalProps {
 type AuthMode = "signin" | "signup";
 
 // Defined at module level so React never sees it as a new component on re-render
-const FIELD: React.CSSProperties = {
+const FIELD: CSSProperties = {
   width: "100%",
-  background: "rgba(255,255,255,0.04)",
-  border: "1px solid rgba(255,255,255,0.1)",
+  background: "var(--elevated)",
+  border: "1px solid var(--border)",
   borderRadius: "0.875rem",
   padding: "0.9rem 1.1rem",
   fontSize: 15,
-  color: "var(--white-primary)",
-  fontFamily: "'Space Grotesk', sans-serif",
+  color: "var(--text-primary)",
+  fontFamily: "'Inter', sans-serif",
   outline: "none",
   transition: "border-color 0.2s",
   boxSizing: "border-box" as const,
@@ -29,17 +30,17 @@ function Field({
 }: {
   id: string; label: string; type: string; value: string;
   onChange: (v: string) => void; placeholder: string; autoComplete: string;
-  inputRef?: React.RefObject<HTMLInputElement | null>;
-  action?: React.ReactNode;
+  inputRef?: RefObject<HTMLInputElement | null>;
+  action?: ReactNode;
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-      <label htmlFor={id} style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "rgba(235,235,235,0.45)", fontFamily: "'JetBrains Mono', monospace" }}>
+      <label htmlFor={id} style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-secondary)", fontFamily: "'JetBrains Mono', monospace" }}>
         {label}
       </label>
       <div style={{ position: "relative" }}>
         <input
-          ref={inputRef as React.RefObject<HTMLInputElement>}
+          ref={inputRef as RefObject<HTMLInputElement>}
           id={id}
           type={type}
           value={value}
@@ -47,8 +48,8 @@ function Field({
           placeholder={placeholder}
           autoComplete={autoComplete}
           style={{ ...FIELD, paddingRight: action ? "3rem" : FIELD.padding as string }}
-          onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(204,255,0,0.5)")}
-          onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
+          onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent-border)")}
+          onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
         />
         {action && (
           <div style={{ position: "absolute", right: "0.875rem", top: "50%", transform: "translateY(-50%)" }}>
@@ -80,11 +81,11 @@ export function AuthModal({ onClose, onAuth }: AuthModalProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
+  function handleOverlayClick(e: MouseEvent<HTMLDivElement>) {
     if (e.target === overlayRef.current) onClose();
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
 
@@ -117,12 +118,12 @@ export function AuthModal({ onClose, onAuth }: AuthModalProps) {
 
   function switchMode() { setError(null); setConfirmSent(false); setMode((m) => (m === "signup" ? "signin" : "signup")); }
 
-  const overlayStyle: React.CSSProperties = {
+  const overlayStyle: CSSProperties = {
     position: "fixed", inset: 0, zIndex: 50,
     display: "flex", alignItems: "center", justifyContent: "center",
     padding: "1rem",
-    background: "rgba(0,0,0,0.8)",
-    backdropFilter: "blur(8px)",
+    background: "rgba(4,4,7,0.76)",
+    backdropFilter: "blur(14px)",
   };
 
   // ── Email confirm state ───────────────────────────────────────────────────
@@ -132,21 +133,21 @@ export function AuthModal({ onClose, onAuth }: AuthModalProps) {
         <div style={{
           position: "relative",
           width: "100%", maxWidth: 480,
-          background: "rgba(12,12,12,0.95)",
-          border: "1px solid rgba(255,255,255,0.08)",
+          background: "color-mix(in srgb, var(--surface) 92%, black 8%)",
+          border: "1px solid var(--border)",
           borderRadius: "2rem",
           padding: "3rem 2.5rem",
           textAlign: "center",
-          fontFamily: "'Space Grotesk', sans-serif",
+          fontFamily: "'Inter', sans-serif",
         }}>
-          <button onClick={onClose} style={{ position: "absolute", top: "1.25rem", right: "1.25rem", background: "none", border: "none", cursor: "pointer", color: "rgba(235,235,235,0.3)" }}>
+          <button onClick={onClose} style={{ position: "absolute", top: "1.25rem", right: "1.25rem", background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)" }}>
             <X size={18} />
           </button>
-          <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(204,255,0,0.1)", border: "1px solid rgba(204,255,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.5rem", fontSize: 28 }}>✉</div>
-          <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--white-primary)", marginBottom: "0.75rem" }}>Check your email</h2>
-          <p style={{ fontSize: 14, color: "rgba(235,235,235,0.5)", lineHeight: 1.7, marginBottom: "2rem" }}>
+          <div style={{ width: 64, height: 64, borderRadius: "50%", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.5rem", fontSize: 28 }}>✉</div>
+          <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "0.75rem" }}>Check your email</h2>
+          <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.7, marginBottom: "2rem" }}>
             We sent a confirmation link to<br />
-            <strong style={{ color: "var(--lime)" }}>{email}</strong>.<br />
+            <strong style={{ color: "var(--accent)" }}>{email}</strong>.<br />
             Click it to activate your account, then sign in.
           </p>
           <button onClick={switchMode} className="neon-btn" style={{ padding: "0.875rem 2rem", fontSize: 14 }}>
@@ -165,19 +166,19 @@ export function AuthModal({ onClose, onAuth }: AuthModalProps) {
         width: "100%",
         maxWidth: 880,
         display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        background: "rgba(12,12,12,0.97)",
-        border: "1px solid rgba(255,255,255,0.08)",
+        gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+        background: "color-mix(in srgb, var(--surface) 95%, black 5%)",
+        border: "1px solid var(--border)",
         borderRadius: "2rem",
         overflow: "hidden",
-        fontFamily: "'Space Grotesk', sans-serif",
+        fontFamily: "'Inter', sans-serif",
         boxShadow: "0 40px 80px rgba(0,0,0,0.6)",
       }}>
         {/* ── Left panel — branding ─────────────────────────────────── */}
         <div style={{
           padding: "3rem",
-          background: "rgba(204,255,0,0.04)",
-          borderRight: "1px solid rgba(255,255,255,0.06)",
+          background: "linear-gradient(180deg, var(--accent-soft) 0%, color-mix(in srgb, var(--surface) 94%, black 6%) 100%)",
+          borderRight: "1px solid var(--border)",
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
@@ -185,18 +186,18 @@ export function AuthModal({ onClose, onAuth }: AuthModalProps) {
         }}>
           {/* Logo */}
           <div>
-            <div style={{ fontWeight: 700, fontSize: 22, letterSpacing: "-0.01em", color: "var(--white-primary)", marginBottom: "2.5rem" }}>
-              Resume<span style={{ color: "var(--lime)" }}>AI</span>
+            <div style={{ fontWeight: 700, fontSize: 22, letterSpacing: "-0.01em", color: "var(--text-primary)", marginBottom: "2.5rem", fontFamily: "'Space Grotesk', sans-serif" }}>
+              Resume<span style={{ color: "var(--accent)" }}>AI</span>
             </div>
 
             <div style={{ marginBottom: "2rem" }}>
-              <div className="mono" style={{ color: "var(--lime)", marginBottom: "0.75rem" }}>
+              <div className="mono" style={{ color: "var(--accent)", marginBottom: "0.75rem" }}>
                 {mode === "signup" ? "get started free" : "welcome back"}
               </div>
-              <h2 style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)", fontWeight: 700, lineHeight: 1.2, letterSpacing: "-0.02em", color: "var(--white-primary)" }}>
+              <h2 style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)", fontWeight: 700, lineHeight: 1.2, letterSpacing: "-0.02em", color: "var(--text-primary)", fontFamily: "'Space Grotesk', sans-serif" }}>
                 {mode === "signup"
-                  ? <>Tailor your resume.<br /><span style={{ color: "var(--lime)" }}>Land more interviews.</span></>
-                  : <>Good to see<br /><span style={{ color: "var(--lime)" }}>you again.</span></>
+                  ? <>Tailor your resume.<br /><span style={{ color: "var(--accent)" }}>Land more interviews.</span></>
+                  : <>Good to see<br /><span style={{ color: "var(--accent)" }}>you again.</span></>
                 }
               </h2>
             </div>
@@ -209,17 +210,17 @@ export function AuthModal({ onClose, onAuth }: AuthModalProps) {
                 { icon: <FileDown size={14} />, text: "Download as PDF or DOCX instantly" },
               ].map(({ icon, text }) => (
                 <div key={text} style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(204,255,0,0.1)", border: "1px solid rgba(204,255,0,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: "var(--lime)" }}>
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: "var(--accent)" }}>
                     {icon}
                   </div>
-                  <span style={{ fontSize: 13, color: "rgba(235,235,235,0.55)", lineHeight: 1.4 }}>{text}</span>
+                  <span style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.4 }}>{text}</span>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Bottom trust line */}
-          <p style={{ fontSize: 11, color: "rgba(235,235,235,0.2)", marginTop: "2rem", lineHeight: 1.6 }}>
+          <p style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: "2rem", lineHeight: 1.6 }}>
             Your resume data is processed in memory<br />and never stored on our servers.
           </p>
         </div>
@@ -230,18 +231,18 @@ export function AuthModal({ onClose, onAuth }: AuthModalProps) {
           <button
             onClick={onClose}
             aria-label="Close"
-            style={{ position: "absolute", top: "1.25rem", right: "1.25rem", background: "none", border: "none", cursor: "pointer", color: "rgba(235,235,235,0.3)", transition: "color 0.2s" }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "var(--white-primary)")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(235,235,235,0.3)")}
+            style={{ position: "absolute", top: "1.25rem", right: "1.25rem", background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)", transition: "color 0.2s" }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "var(--text-primary)")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-secondary)")}
           >
             <X size={18} />
           </button>
 
           <div style={{ marginBottom: "2rem" }}>
-            <h3 style={{ fontSize: "1.35rem", fontWeight: 700, color: "var(--white-primary)", marginBottom: "0.375rem" }}>
+            <h3 style={{ fontSize: "1.35rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "0.375rem", fontFamily: "'Space Grotesk', sans-serif" }}>
               {mode === "signup" ? "Create your free account" : "Sign in to ResumeAI"}
             </h3>
-            <p style={{ fontSize: 13, color: "rgba(235,235,235,0.4)" }}>
+            <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>
               {mode === "signup" ? "No credit card required." : "Resume tailoring awaits."}
             </p>
           </div>
@@ -273,7 +274,7 @@ export function AuthModal({ onClose, onAuth }: AuthModalProps) {
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   aria-label={showPassword ? "Hide password" : "Show password"}
-                  style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(235,235,235,0.3)", display: "flex", padding: 0 }}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)", display: "flex", padding: 0 }}
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -281,7 +282,7 @@ export function AuthModal({ onClose, onAuth }: AuthModalProps) {
             />
 
             {error && (
-              <div style={{ padding: "0.75rem 1rem", borderRadius: "0.75rem", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.25)", color: "#fca5a5", fontSize: 13 }}>
+              <div style={{ padding: "0.75rem 1rem", borderRadius: "0.75rem", background: "var(--error-soft)", border: "1px solid rgba(248,113,113,0.25)", color: "#fca5a5", fontSize: 13 }}>
                 {error}
               </div>
             )}
@@ -318,13 +319,13 @@ export function AuthModal({ onClose, onAuth }: AuthModalProps) {
           </form>
 
           {/* Switch mode */}
-          <div style={{ marginTop: "1.75rem", paddingTop: "1.75rem", borderTop: "1px solid rgba(255,255,255,0.06)", textAlign: "center" }}>
-            <p style={{ fontSize: 13, color: "rgba(235,235,235,0.4)" }}>
+          <div style={{ marginTop: "1.75rem", paddingTop: "1.75rem", borderTop: "1px solid var(--border)", textAlign: "center" }}>
+            <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>
               {mode === "signup" ? "Already have an account? " : "Don't have an account? "}
               <button
                 type="button"
                 onClick={switchMode}
-                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--lime)", fontWeight: 700, fontSize: 13, fontFamily: "'Space Grotesk', sans-serif" }}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent)", fontWeight: 700, fontSize: 13, fontFamily: "'Space Grotesk', sans-serif" }}
               >
                 {mode === "signup" ? "Sign in" : "Sign up free"}
               </button>

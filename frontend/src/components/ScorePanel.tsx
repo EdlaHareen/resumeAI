@@ -22,7 +22,7 @@ function ScoreBar({
   return (
     <div style={{ flex: 1 }} aria-label={`${label}: ${displayValue}%`}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.5rem" }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(235,235,235,0.5)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
           {label}
         </span>
         <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem" }}>
@@ -31,7 +31,7 @@ function ScoreBar({
               fontFamily: "'JetBrains Mono', monospace",
               fontSize: 11,
               fontWeight: 600,
-              color: delta > 0 ? "var(--lime)" : "rgba(235,235,235,0.35)",
+              color: delta > 0 ? "var(--lime)" : "var(--text-tertiary)",
             }}>
               {delta > 0 ? `+${delta}` : delta}
             </span>
@@ -71,7 +71,7 @@ function ScoreBar({
 export function ScorePanel({ scores, projectedMatchPercent }: Props) {
   return (
     <div className="bento-card" style={{ padding: "1.25rem 1.5rem" }} aria-label="Resume scores">
-      <h2 className="mono" style={{ marginBottom: "1.25rem", color: "rgba(235,235,235,0.5)" }}>
+      <h2 className="mono" style={{ marginBottom: "1.25rem", color: "var(--text-secondary)" }}>
         resume scores
       </h2>
       <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap" }}>
@@ -85,7 +85,7 @@ export function ScorePanel({ scores, projectedMatchPercent }: Props) {
         <ScoreBar value={scores.strength_score} label="Bullet Strength" color="#f59e0b" />
       </div>
       {projectedMatchPercent !== undefined && projectedMatchPercent !== scores.match_percent && (
-        <p style={{ marginTop: "0.875rem", fontSize: 11, color: "rgba(235,235,235,0.35)", fontFamily: "'JetBrains Mono', monospace" }}>
+        <p style={{ marginTop: "0.875rem", fontSize: 11, color: "var(--text-tertiary)", fontFamily: "'JetBrains Mono', monospace" }}>
           job match updates live as you accept or reject bullets
         </p>
       )}

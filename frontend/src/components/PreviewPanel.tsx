@@ -3,9 +3,10 @@ import { Loader2, RefreshCw } from "lucide-react";
 
 interface Props {
   fetchPdf: () => Promise<Blob>;
+  refreshKey?: string;
 }
 
-export function PreviewPanel({ fetchPdf }: Props) {
+export function PreviewPanel({ fetchPdf, refreshKey }: Props) {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -15,27 +16,39 @@ export function PreviewPanel({ fetchPdf }: Props) {
   useEffect(() => { fetchPdfRef.current = fetchPdf; }, [fetchPdf]);
 
   const urlRef = useRef<string | null>(null);
+  const requestIdRef = useRef(0);
 
   async function load() {
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
     try {
       const blob = await fetchPdfRef.current();
+      if (requestId !== requestIdRef.current) return;
       const url = URL.createObjectURL(blob);
       if (urlRef.current) URL.revokeObjectURL(urlRef.current);
       urlRef.current = url;
       setPdfUrl(url);
     } catch (e) {
+      if (requestId !== requestIdRef.current) return;
       setError(e instanceof Error ? e.message : "Preview generation failed.");
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   }
 
   useEffect(() => {
-    load();
-    return () => { if (urlRef.current) URL.revokeObjectURL(urlRef.current); };
+    const timer = window.setTimeout(() => {
+      void load();
+    }, pdfUrl ? 350 : 0);
+    return () => window.clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey]);
+
+  useEffect(() => {
+    return () => { if (urlRef.current) URL.revokeObjectURL(urlRef.current); };
   }, []);
 
   return (
@@ -45,7 +58,7 @@ export function PreviewPanel({ fetchPdf }: Props) {
         display: "flex", alignItems: "center", justifyContent: "space-between",
         marginBottom: "0.75rem", flexShrink: 0,
       }}>
-        <span className="mono" style={{ fontSize: 11, color: "rgba(235,235,235,0.4)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+        <span className="mono" style={{ fontSize: 11, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
           PDF Preview
         </span>
         <button
@@ -54,9 +67,9 @@ export function PreviewPanel({ fetchPdf }: Props) {
           style={{
             display: "flex", alignItems: "center", gap: "0.375rem",
             padding: "0.375rem 0.875rem", borderRadius: 9999,
-            border: "1px solid rgba(204,255,0,0.25)",
-            background: "rgba(204,255,0,0.06)",
-            color: loading ? "rgba(204,255,0,0.4)" : "var(--lime)",
+            border: "1px solid var(--accent-border)",
+            background: "var(--accent-soft)",
+            color: loading ? "var(--text-tertiary)" : "var(--accent)",
             fontSize: 12, fontWeight: 600,
             cursor: loading ? "not-allowed" : "pointer",
             fontFamily: "'Space Grotesk', sans-serif",
@@ -91,26 +104,26 @@ export function PreviewPanel({ fetchPdf }: Props) {
             display: "flex", alignItems: "center", justifyContent: "center",
             zIndex: 2,
           }}>
-            <Loader2 size={28} style={{ animation: "spin 1s linear infinite", color: "var(--lime)" }} aria-hidden="true" />
+            <Loader2 size={28} style={{ animation: "spin 1s linear infinite", color: "var(--accent)" }} aria-hidden="true" />
           </div>
         )}
 
         {/* Initial loading state */}
         {loading && !pdfUrl && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem", color: "rgba(235,235,235,0.4)" }}>
-            <Loader2 size={24} style={{ animation: "spin 1s linear infinite", color: "var(--lime)" }} aria-hidden="true" />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem", color: "var(--text-secondary)" }}>
+            <Loader2 size={24} style={{ animation: "spin 1s linear infinite", color: "var(--accent)" }} aria-hidden="true" />
             <p style={{ fontSize: 13, margin: 0 }}>Generating preview…</p>
           </div>
         )}
 
         {/* Error state */}
         {error && !pdfUrl && (
-          <div style={{ textAlign: "center", padding: "1.5rem", color: "rgba(235,235,235,0.4)" }}>
+          <div style={{ textAlign: "center", padding: "1.5rem", color: "var(--text-secondary)" }}>
             <p style={{ fontSize: 13, margin: "0 0 0.75rem" }}>{error}</p>
             <button
               onClick={load}
               style={{
-                fontSize: 12, color: "var(--lime)", background: "none", border: "none",
+                fontSize: 12, color: "var(--accent)", background: "none", border: "none",
                 cursor: "pointer", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600,
               }}
             >

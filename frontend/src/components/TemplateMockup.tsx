@@ -215,7 +215,7 @@ export function TemplatePreviewModal({ template, tier, onSelect, onUpgrade, onCl
               <h3 style={{ margin: 0, fontSize: 18, color: "#fff" }}>{template.label}</h3>
               {template.pro && <span style={{ background: "#ccff00", color: "#000", fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 4 }}>PRO</span>}
             </div>
-            <p style={{ margin: "2px 0 0", fontSize: 13, color: "rgba(235,235,235,0.5)" }}>{template.desc}</p>
+            <p style={{ margin: "2px 0 0", fontSize: 13, color: "var(--text-secondary)" }}>{template.desc}</p>
           </div>
           <button onClick={onClose} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: 24, padding: 0 }}>✕</button>
         </div>

@@ -1,397 +1,547 @@
-import { useEffect, useState, useMemo } from "react";
-import { FileText, Plus, TrendingUp, Clock, ExternalLink, Search, ChevronDown, ChevronRight, ArrowLeft } from "lucide-react";
-import { UserNav } from "../components/UserNav";
-import { loadHistory } from "../lib/history";
-import type { HistoryEntry, TailorResponse } from "../types";
+import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import {
+  ArrowUpRight,
+  FileText,
+  LayoutTemplate,
+  Mail,
+  Plus,
+  Settings,
+  Sparkles,
+  TrendingUp,
+} from "lucide-react";
 import type { User } from "@supabase/supabase-js";
+import { loadHistory } from "../lib/history";
+import type { AppStep, HistoryEntry, TailorResponse, Tier, UpgradeReason } from "../types";
 
 interface Props {
   user: User;
-  tier?: import("../types").Tier;
+  tier: Tier;
   onNewResume: () => void;
-  onSignOut: () => void;
-  onLogoClick: () => void;
-  onBack: () => void;
+  onOpenSection: (step: Extract<AppStep, "resumes" | "templates" | "cover-letters" | "ai-review" | "settings">) => void;
   onReopen: (result: TailorResponse) => void;
-  onCancelSubscription?: () => void;
-}
-
-function ScorePill({ value, color }: { value: number; color: string }) {
-  return (
-    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700, color, background: `${color}18`, border: `1px solid ${color}40`, borderRadius: 9999, padding: "0.15rem 0.5rem" }}>
-      {value}%
-    </span>
-  );
+  onUpgrade: (reason: UpgradeReason) => void;
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
-const DATE_GROUPS = ["This Month", "Last Month", "Older"] as const;
-type DateGroup = typeof DATE_GROUPS[number];
-
-function getDateGroup(iso: string): DateGroup {
-  const now = new Date();
-  const date = new Date(iso);
-  if (date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth()) return "This Month";
-  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  if (date.getFullYear() === lastMonth.getFullYear() && date.getMonth() === lastMonth.getMonth()) return "Last Month";
-  return "Older";
+function average(values: number[]) {
+  if (values.length === 0) return 0;
+  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
 }
 
-const PAGE_SIZE = 5;
+function getTopKeywords(history: HistoryEntry[]) {
+  const counts = new Map<string, number>();
+  for (const entry of history) {
+    const keywords = entry.response?.jd_analysis.ats_keywords ?? [];
+    for (const keyword of keywords) {
+      const normalized = keyword.trim();
+      if (!normalized) continue;
+      counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([keyword]) => keyword);
+}
 
-function HistoryCard({ entry, onReopen }: { entry: HistoryEntry; onReopen: (r: TailorResponse) => void }) {
+function StatCard({
+  label,
+  value,
+  helper,
+}: {
+  label: string;
+  value: string;
+  helper: string;
+}) {
   return (
-    <div className="bento-card" style={{ padding: "1.25rem 1.5rem" }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.375rem", flexWrap: "wrap" }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "var(--white-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {entry.original_filename ?? "Resume"}
-            </span>
-            {entry.job_role && (
-              <span style={{ fontSize: 11, padding: "0.15rem 0.6rem", borderRadius: 9999, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(235,235,235,0.4)", whiteSpace: "nowrap" }}>
-                {entry.job_role}
-              </span>
-            )}
-          </div>
-          {entry.jd_snippet && (
-            <p style={{ fontSize: 12, color: "rgba(235,235,235,0.35)", lineHeight: 1.5, marginBottom: "0.75rem", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const }}>
-              {entry.jd_snippet}
-            </p>
-          )}
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-            {entry.match_percent != null && <ScorePill value={entry.match_percent} color="var(--lime)" />}
-            {entry.ats_score != null && <ScorePill value={entry.ats_score} color="#10b981" />}
-            {entry.strength_score != null && <ScorePill value={entry.strength_score} color="#f59e0b" />}
-            <span style={{ fontSize: 12, color: "rgba(235,235,235,0.25)" }}>
-              {entry.changed_bullets}/{entry.total_bullets} bullets changed
-            </span>
-          </div>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.5rem" }}>
-          <span style={{ fontSize: 11, color: "rgba(235,235,235,0.3)", whiteSpace: "nowrap", fontFamily: "'JetBrains Mono', monospace" }}>
-            {formatDate(entry.created_at)}
-          </span>
-          {entry.response && (
-            <button
-              onClick={() => onReopen(entry.response!)}
-              style={{
-                display: "flex", alignItems: "center", gap: "0.3rem",
-                padding: "0.3rem 0.75rem",
-                borderRadius: 9999,
-                border: "1px solid rgba(204,255,0,0.25)",
-                background: "rgba(204,255,0,0.06)",
-                color: "var(--lime)",
-                fontSize: 11, fontWeight: 600, cursor: "pointer",
-                fontFamily: "'Space Grotesk', sans-serif",
-                whiteSpace: "nowrap",
-              }}
-            >
-              <ExternalLink size={11} />
-              Re-open
-            </button>
-          )}
-        </div>
+    <div
+      className="bento-card"
+      style={{
+        padding: "1.25rem",
+        background:
+          "linear-gradient(180deg, color-mix(in srgb, var(--surface) 88%, white 12%), var(--surface))",
+      }}
+    >
+      <div className="label" style={{ marginBottom: "0.75rem" }}>
+        {label}
       </div>
+      <div
+        style={{
+          fontSize: "1.9rem",
+          fontWeight: 700,
+          color: "var(--text-primary)",
+          letterSpacing: "-0.04em",
+          marginBottom: "0.35rem",
+        }}
+      >
+        {value}
+      </div>
+      <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>{helper}</p>
     </div>
   );
 }
 
-export function DashboardPage({ user, tier, onNewResume, onSignOut, onLogoClick, onBack, onReopen, onCancelSubscription }: Props) {
+function ActionCard({
+  icon,
+  title,
+  description,
+  actionLabel,
+  onClick,
+  locked = false,
+}: {
+  icon: ReactNode;
+  title: string;
+  description: string;
+  actionLabel: string;
+  onClick: () => void;
+  locked?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="bento-card"
+      style={{
+        textAlign: "left",
+        padding: "1.25rem",
+        cursor: "pointer",
+        background:
+          "linear-gradient(135deg, color-mix(in srgb, var(--surface) 82%, white 18%), var(--surface))",
+      }}
+    >
+      <div
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 14,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "var(--accent-soft)",
+          border: "1px solid var(--accent-border)",
+          color: "var(--accent)",
+          marginBottom: "1rem",
+        }}
+      >
+        {icon}
+      </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "0.75rem",
+          marginBottom: "0.4rem",
+        }}
+      >
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>{title}</h3>
+        {locked && <span className="pill pill-pro">Pro</span>}
+      </div>
+      <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6, minHeight: 42 }}>
+        {description}
+      </p>
+      <div
+        style={{
+          marginTop: "1rem",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "0.35rem",
+          color: "var(--accent)",
+          fontSize: 13,
+          fontWeight: 600,
+        }}
+      >
+        {actionLabel}
+        <ArrowUpRight size={14} />
+      </div>
+    </button>
+  );
+}
+
+function RecentSessionCard({
+  entry,
+  onReopen,
+}: {
+  entry: HistoryEntry;
+  onReopen: (result: TailorResponse) => void;
+}) {
+  if (!entry.response) return null;
+
+  const title = entry.job_role || entry.response.resume_summary.title || "Tailored resume";
+
+  return (
+    <div
+      className="bento-card"
+      style={{
+        padding: "1rem 1.1rem",
+        display: "flex",
+        justifyContent: "space-between",
+        gap: "1rem",
+        alignItems: "center",
+      }}
+    >
+      <div style={{ minWidth: 0 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            flexWrap: "wrap",
+            marginBottom: "0.3rem",
+          }}
+        >
+          <span style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>{title}</span>
+          <span className="pill pill-ghost">{entry.match_percent ?? entry.response.scores.match_percent}% match</span>
+        </div>
+        <p
+          style={{
+            fontSize: 13,
+            color: "var(--text-secondary)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            maxWidth: "100%",
+          }}
+        >
+          {entry.original_filename ?? "Untitled resume"} · {formatDate(entry.created_at)}
+        </p>
+      </div>
+      <button type="button" className="ghost-btn" onClick={() => onReopen(entry.response!)}>
+        Open Review
+      </button>
+    </div>
+  );
+}
+
+export function DashboardPage({
+  user,
+  tier,
+  onNewResume,
+  onOpenSection,
+  onReopen,
+  onUpgrade,
+}: Props) {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [openGroups, setOpenGroups] = useState<Set<DateGroup>>(new Set());
-
-  const name: string = (user.user_metadata?.full_name as string | undefined) || "there";
-  const firstName = name.split(" ")[0];
-
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let mounted = true;
     loadHistory()
-      .then(setHistory)
-      .catch((err: Error) => setLoadError(err.message))
-      .finally(() => setLoading(false));
+      .then((rows) => {
+        if (mounted) setHistory(rows);
+      })
+      .catch((err: Error) => {
+        if (mounted) setError(err.message);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  const isSearching = searchQuery.trim().length > 0;
+  const firstName = ((user.user_metadata?.full_name as string | undefined) || user.email || "there").split(" ")[0];
 
-  const filtered = useMemo(() => {
-    if (!isSearching) return history;
-    const q = searchQuery.toLowerCase();
-    return history.filter(e =>
-      (e.original_filename ?? "").toLowerCase().includes(q) ||
-      (e.job_role ?? "").toLowerCase().includes(q)
-    );
-  }, [history, searchQuery, isSearching]);
-
-  // Reset to page 1 whenever search changes
-  useEffect(() => { setCurrentPage(1); }, [searchQuery]);
-
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-
-  const grouped = useMemo(() => {
-    const map: Record<DateGroup, HistoryEntry[]> = { "This Month": [], "Last Month": [], "Older": [] };
-    for (const entry of history) map[getDateGroup(entry.created_at)].push(entry);
-    return map;
+  const summary = useMemo(() => {
+    const matchValues = history.map((entry) => entry.match_percent ?? entry.response?.scores.match_percent ?? 0);
+    const atsValues = history.map((entry) => entry.ats_score ?? entry.response?.scores.ats_score ?? 0);
+    return {
+      total: history.length,
+      avgMatch: average(matchValues),
+      avgAts: average(atsValues),
+      topKeywords: getTopKeywords(history),
+      recent: history.slice(0, 3),
+    };
   }, [history]);
 
-  function toggleGroup(group: DateGroup) {
-    setOpenGroups(prev => {
-      const next = new Set(prev);
-      next.has(group) ? next.delete(group) : next.add(group);
-      return next;
-    });
-  }
-
   return (
-    <div style={{ minHeight: "100vh", background: "var(--black)", fontFamily: "'Space Grotesk', sans-serif" }}>
-      {/* Nav */}
-      <nav style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "1rem 2rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <button
-          type="button"
-          onClick={onLogoClick}
-          style={{ fontWeight: 700, fontSize: 18, letterSpacing: "-0.01em", color: "var(--white-primary)", background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}
-          aria-label="Go to dashboard"
-        >
-          Resume<span style={{ color: "var(--lime)" }}>AI</span>
-        </button>
-        <UserNav user={user} tier={tier} onDashboard={() => {}} onSignOut={onSignOut} onNewResume={onNewResume} onCancelSubscription={onCancelSubscription} />
-      </nav>
-
-      <main style={{ maxWidth: 800, margin: "0 auto", padding: "3rem 1.5rem" }}>
-        {/* Back button */}
-        <button
-          onClick={onBack}
+    <div
+      style={{
+        minHeight: "100%",
+        padding: "1.5rem",
+        background:
+          "radial-gradient(circle at top right, color-mix(in srgb, var(--accent) 18%, transparent) 0, transparent 38%), var(--bg)",
+      }}
+    >
+      <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+        <section
+          className="bento-card"
           style={{
-            display: "inline-flex", alignItems: "center", gap: "0.4rem",
-            marginBottom: "1.5rem",
-            background: "none", border: "none", cursor: "pointer", padding: 0,
-            color: "rgba(235,235,235,0.4)", fontSize: 13,
-            fontFamily: "'Space Grotesk', sans-serif",
-            transition: "color 0.15s",
+            padding: "1.6rem",
+            background:
+              "linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, var(--surface)) 0%, var(--surface) 55%, color-mix(in srgb, var(--surface) 70%, white 30%) 100%)",
           }}
-          onMouseEnter={e => { e.currentTarget.style.color = "var(--lime)"; }}
-          onMouseLeave={e => { e.currentTarget.style.color = "rgba(235,235,235,0.4)"; }}
         >
-          <ArrowLeft size={14} />
-          Back to Home
-        </button>
-
-        {/* Header */}
-        <div style={{ marginBottom: "2.5rem", display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
-          <div>
-            <div className="mono" style={{ color: "var(--lime)", marginBottom: "0.5rem" }}>dashboard</div>
-            <h1 style={{ fontSize: "2rem", fontWeight: 700, letterSpacing: "-0.02em", color: "var(--white-primary)" }}>
-              Welcome back, {firstName} 👋
-            </h1>
-            <p style={{ marginTop: "0.4rem", fontSize: 14, color: "rgba(235,235,235,0.45)" }}>
-              {history.length === 0 ? "No tailored resumes yet. Start your first one!" : `${history.length} resume${history.length !== 1 ? "s" : ""} tailored so far.`}
-            </p>
-          </div>
-          <button
-            onClick={onNewResume}
-            className="neon-btn"
-            style={{ padding: "0.75rem 1.5rem", fontSize: 14, display: "flex", alignItems: "center", gap: "0.5rem", animation: "none" }}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              gap: "1rem",
+              flexWrap: "wrap",
+            }}
           >
-            <Plus size={16} />
-            Tailor New Resume
-          </button>
-        </div>
-
-        {/* Stats row */}
-        {history.length > 0 && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1rem", marginBottom: "2rem" }}>
-            {[
-              { label: "Total Tailored", value: history.length, suffix: "", icon: <FileText size={16} /> },
-              { label: "Avg Job Match", value: Math.round(history.reduce((s, h) => s + (h.match_percent ?? 0), 0) / history.length), suffix: "%", icon: <TrendingUp size={16} /> },
-              { label: "Latest", value: formatDate(history[0].created_at), suffix: "", icon: <Clock size={16} /> },
-            ].map(({ label, value, suffix, icon }) => (
-              <div key={label} className="bento-card" style={{ padding: "1.25rem 1.5rem" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem", color: "rgba(235,235,235,0.4)" }}>
-                  {icon}
-                  <span className="mono">{label}</span>
-                </div>
-                <p style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--lime)", fontFamily: "'JetBrains Mono', monospace" }}>
-                  {value}{suffix}
-                </p>
+            <div style={{ maxWidth: 620 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.8rem" }}>
+                <span className="pill pill-accent">Workspace</span>
+                <span className={`pill ${tier === "pro" ? "pill-pro" : "pill-neutral"}`}>{tier.toUpperCase()}</span>
               </div>
-            ))}
-          </div>
-        )}
+              <h1
+                style={{
+                  fontSize: "clamp(2rem, 5vw, 3.2rem)",
+                  lineHeight: 1.02,
+                  letterSpacing: "-0.06em",
+                  color: "var(--text-primary)",
+                  marginBottom: "0.8rem",
+                }}
+              >
+                Welcome back, {firstName}.
+              </h1>
+              <p style={{ fontSize: 15, color: "var(--text-secondary)", lineHeight: 1.7, maxWidth: 560 }}>
+                This is your resume command center. Tailor new roles, reopen past sessions, switch templates,
+                and jump straight into the part of the workflow you need from the left menu.
+              </p>
+            </div>
 
-        {/* Search bar */}
-        {history.length > 0 && (
-          <div style={{ position: "relative", marginBottom: "1.5rem" }}>
-            <Search size={15} style={{ position: "absolute", left: "0.9rem", top: "50%", transform: "translateY(-50%)", color: "rgba(235,235,235,0.3)", pointerEvents: "none" }} />
-            <input
-              type="text"
-              placeholder="Search by filename or job role..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
+            <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+              <button type="button" className="accent-btn" onClick={onNewResume}>
+                <Plus size={16} />
+                Tailor New Resume
+              </button>
+              <button type="button" className="ghost-btn" onClick={() => onOpenSection("resumes")}>
+                <FileText size={16} />
+                Open Library
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: "1rem",
+          }}
+        >
+          <StatCard
+            label="Tailored Sessions"
+            value={loading ? "..." : String(summary.total)}
+            helper={summary.total > 0 ? "Reusable from the Resume Library" : "Start your first tailored resume"}
+          />
+          <StatCard
+            label="Average Match"
+            value={loading ? "..." : `${summary.avgMatch}%`}
+            helper="Based on the sessions saved to your account"
+          />
+          <StatCard
+            label="Average ATS"
+            value={loading ? "..." : `${summary.avgAts}%`}
+            helper="A quick read on structure and keyword alignment"
+          />
+        </section>
+
+        <section
+          style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(0, 1.35fr) minmax(320px, 0.95fr)",
+            gap: "1rem",
+          }}
+        >
+          <div className="bento-card" style={{ padding: "1.35rem" }}>
+            <div
               style={{
-                width: "100%",
-                boxSizing: "border-box",
-                background: "var(--obsidian)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 10,
-                padding: "0.65rem 1rem 0.65rem 2.5rem",
-                fontSize: 14,
-                color: "var(--white-primary)",
-                fontFamily: "'Space Grotesk', sans-serif",
-                outline: "none",
-                transition: "border-color 0.15s",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "1rem",
+                marginBottom: "1rem",
               }}
-              onFocus={e => { e.currentTarget.style.borderColor = "rgba(204,255,0,0.35)"; }}
-              onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }}
-            />
-          </div>
-        )}
+            >
+              <div>
+                <div className="label" style={{ marginBottom: "0.4rem" }}>
+                  Recent Sessions
+                </div>
+                <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-primary)" }}>Continue where you left off</h2>
+              </div>
+              <button type="button" className="ghost-btn" onClick={() => onOpenSection("resumes")}>
+                View All
+              </button>
+            </div>
 
-        {/* History list */}
-        {loadError && (
-          <div style={{ padding: "0.75rem 1rem", marginBottom: "1rem", borderRadius: 8, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", fontSize: 13 }}>
-            Failed to load history: {loadError}
-          </div>
-        )}
-        {loading ? (
-          <div style={{ textAlign: "center", padding: "4rem", color: "rgba(235,235,235,0.3)" }}>
-            <div style={{ width: 32, height: 32, borderRadius: "50%", border: "2px solid rgba(204,255,0,0.3)", borderTopColor: "var(--lime)", animation: "spin 1s linear infinite", margin: "0 auto 1rem" }} />
-            Loading history...
-          </div>
-        ) : history.length === 0 ? (
-          <div className="bento-card" style={{ padding: "4rem", textAlign: "center" }}>
-            <FileText size={40} color="rgba(235,235,235,0.15)" style={{ margin: "0 auto 1rem" }} />
-            <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--white-primary)", marginBottom: "0.5rem" }}>No resumes tailored yet</h3>
-            <p style={{ fontSize: 14, color: "rgba(235,235,235,0.4)", marginBottom: "1.5rem" }}>Upload your resume and a job description to get started.</p>
-            <button onClick={onNewResume} className="neon-btn" style={{ padding: "0.75rem 1.5rem", fontSize: 14, animation: "none" }}>
-              Tailor My First Resume
-            </button>
-          </div>
-        ) : isSearching ? (
-          /* Flat paginated list when searching */
-          <div>
-            {filtered.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "3rem", color: "rgba(235,235,235,0.3)", fontSize: 14 }}>
-                No results for "{searchQuery}"
+            {error && (
+              <div
+                style={{
+                  marginBottom: "1rem",
+                  padding: "0.85rem 1rem",
+                  borderRadius: 14,
+                  background: "var(--error-soft)",
+                  border: "1px solid rgba(255, 69, 58, 0.2)",
+                  color: "var(--error)",
+                  fontSize: 13,
+                }}
+              >
+                Failed to load your history: {error}
+              </div>
+            )}
+
+            {loading ? (
+              <div style={{ display: "grid", gap: "0.85rem" }}>
+                {[0, 1, 2].map((item) => (
+                  <div key={item} className="skeleton" style={{ height: 92 }} />
+                ))}
+              </div>
+            ) : summary.recent.length > 0 ? (
+              <div style={{ display: "grid", gap: "0.8rem" }}>
+                {summary.recent.map((entry) => (
+                  <RecentSessionCard key={entry.id} entry={entry} onReopen={onReopen} />
+                ))}
               </div>
             ) : (
-              <>
-                <div style={{ fontSize: 12, color: "rgba(235,235,235,0.3)", marginBottom: "0.75rem", fontFamily: "'JetBrains Mono', monospace" }}>
-                  {filtered.length} result{filtered.length !== 1 ? "s" : ""}
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                  {paginated.map(entry => (
-                    <HistoryCard key={entry.id} entry={entry} onReopen={onReopen} />
-                  ))}
-                </div>
-                {totalPages > 1 && (
-                  <Pagination current={currentPage} total={totalPages} onChange={setCurrentPage} />
-                )}
-              </>
+              <div
+                style={{
+                  padding: "2rem 1.25rem",
+                  borderRadius: 18,
+                  border: "1px dashed var(--border)",
+                  background: "var(--elevated)",
+                  textAlign: "center",
+                }}
+              >
+                <FileText size={34} color="var(--text-tertiary)" style={{ margin: "0 auto 0.8rem" }} />
+                <p style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)", marginBottom: "0.35rem" }}>
+                  No tailored sessions yet
+                </p>
+                <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: "1rem" }}>
+                  Upload a resume and job description to start building your library.
+                </p>
+                <button type="button" className="accent-btn" onClick={onNewResume}>
+                  <Plus size={16} />
+                  Start Tailoring
+                </button>
+              </div>
             )}
           </div>
-        ) : (
-          /* Grouped + collapsible when not searching */
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            {DATE_GROUPS.filter(g => grouped[g].length > 0).map(group => {
-              const isOpen = openGroups.has(group);
-              const entries = grouped[group];
-              return (
-                <div key={group}>
-                  <button
-                    onClick={() => toggleGroup(group)}
-                    style={{
-                      width: "100%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "0.6rem 0.75rem",
-                      background: "none",
-                      border: "none",
-                      borderRadius: 8,
-                      cursor: "pointer",
-                      color: "rgba(235,235,235,0.5)",
-                      fontFamily: "'Space Grotesk', sans-serif",
-                      fontSize: 12,
-                      fontWeight: 600,
-                      letterSpacing: "0.05em",
-                      textTransform: "uppercase",
-                      transition: "background 0.15s",
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
-                  >
-                    <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      {isOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-                      {group}
-                    </span>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "rgba(235,235,235,0.25)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>
-                      {entries.length}
-                    </span>
-                  </button>
-                  {isOpen && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginTop: "0.5rem", marginBottom: "0.75rem" }}>
-                      {entries.map(entry => (
-                        <HistoryCard key={entry.id} entry={entry} onReopen={onReopen} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </main>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
-  );
-}
 
-function Pagination({ current, total, onChange }: { current: number; total: number; onChange: (p: number) => void }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem", marginTop: "1.5rem" }}>
-      <button
-        onClick={() => onChange(current - 1)}
-        disabled={current === 1}
-        style={{
-          padding: "0.4rem 0.9rem",
-          borderRadius: 8,
-          border: "1px solid rgba(255,255,255,0.08)",
-          background: "none",
-          color: current === 1 ? "rgba(235,235,235,0.2)" : "rgba(235,235,235,0.6)",
-          fontSize: 13,
-          cursor: current === 1 ? "not-allowed" : "pointer",
-          fontFamily: "'Space Grotesk', sans-serif",
-        }}
-      >
-        ← Prev
-      </button>
-      <span style={{ fontSize: 12, color: "rgba(235,235,235,0.35)", fontFamily: "'JetBrains Mono', monospace" }}>
-        {current} / {total}
-      </span>
-      <button
-        onClick={() => onChange(current + 1)}
-        disabled={current === total}
-        style={{
-          padding: "0.4rem 0.9rem",
-          borderRadius: 8,
-          border: "1px solid rgba(255,255,255,0.08)",
-          background: "none",
-          color: current === total ? "rgba(235,235,235,0.2)" : "rgba(235,235,235,0.6)",
-          fontSize: 13,
-          cursor: current === total ? "not-allowed" : "pointer",
-          fontFamily: "'Space Grotesk', sans-serif",
-        }}
-      >
-        Next →
-      </button>
+          <div className="bento-card" style={{ padding: "1.35rem" }}>
+            <div className="label" style={{ marginBottom: "0.4rem" }}>
+              Repeated Signals
+            </div>
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-primary)", marginBottom: "0.9rem" }}>
+              Common keywords in your saved work
+            </h2>
+
+            {summary.topKeywords.length > 0 ? (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.55rem", marginBottom: "1.2rem" }}>
+                {summary.topKeywords.map((keyword) => (
+                  <span key={keyword} className="pill pill-accent" style={{ fontSize: 12 }}>
+                    {keyword}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: "1.2rem" }}>
+                Your dashboard will start surfacing recurring ATS terms after a few tailored sessions.
+              </p>
+            )}
+
+            <div
+              style={{
+                borderRadius: 18,
+                padding: "1rem",
+                background: "var(--elevated)",
+                border: "1px solid var(--border)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.55rem",
+                  marginBottom: "0.55rem",
+                  color: "var(--accent)",
+                }}
+              >
+                <TrendingUp size={16} />
+                <span style={{ fontSize: 14, fontWeight: 600 }}>Best next move</span>
+              </div>
+              <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.7 }}>
+                {summary.total === 0
+                  ? "Build your first tailored resume so the rest of the workspace can give you useful history, analytics, and cover-letter context."
+                  : "Use the Resume Library to reopen your strongest session, then export polished versions or generate a matching cover letter from the same context."}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div style={{ marginBottom: "0.9rem" }}>
+            <div className="label" style={{ marginBottom: "0.35rem" }}>
+              Left Menu Shortcuts
+            </div>
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-primary)" }}>Each workspace area now has its own job</h2>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: "1rem",
+            }}
+          >
+            <ActionCard
+              icon={<FileText size={20} />}
+              title="Resume Library"
+              description="Reopen saved sessions, manage your base resume, and export PDF or DOCX versions."
+              actionLabel="Open resumes"
+              onClick={() => onOpenSection("resumes")}
+            />
+            <ActionCard
+              icon={<LayoutTemplate size={20} />}
+              title="Templates"
+              description="Pick the default resume style used for the next export and preview each layout before selecting."
+              actionLabel="Choose template"
+              onClick={() => onOpenSection("templates")}
+            />
+            <ActionCard
+              icon={<Mail size={20} />}
+              title="Cover Letters"
+              description="Start a cover letter from your current or past tailored sessions instead of rebuilding context."
+              actionLabel={tier === "pro" ? "Open cover letters" : "Unlock cover letters"}
+              onClick={() => {
+                if (tier === "pro") {
+                  onOpenSection("cover-letters");
+                  return;
+                }
+                onUpgrade("cover_letter");
+              }}
+              locked={tier !== "pro"}
+            />
+            <ActionCard
+              icon={<Sparkles size={20} />}
+              title="AI Review"
+              description="Track match trends, inspect recent analyses, and jump back into your latest tailored review."
+              actionLabel="Open insights"
+              onClick={() => onOpenSection("ai-review")}
+            />
+            <ActionCard
+              icon={<Settings size={20} />}
+              title="Settings"
+              description="Manage your plan, appearance, and account preferences without leaving the workspace."
+              actionLabel="Open settings"
+              onClick={() => onOpenSection("settings")}
+            />
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

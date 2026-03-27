@@ -86,7 +86,7 @@ export function UploadZone({ file, onFileSelect }: Props) {
               <FileText size={22} color="#10b981" aria-hidden="true" />
             </div>
             <p style={{ fontSize: 14, fontWeight: 600, color: "#10b981" }}>{file.name}</p>
-            <p style={{ fontSize: 12, color: "rgba(235,235,235,0.35)" }}>Click to replace</p>
+            <p style={{ fontSize: 12, color: "var(--text-tertiary)" }}>Click to replace</p>
           </>
         ) : (
           <>
@@ -96,13 +96,13 @@ export function UploadZone({ file, onFileSelect }: Props) {
               border: "1px solid rgba(255,255,255,0.1)",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
-              <Upload size={22} color="rgba(235,235,235,0.5)" aria-hidden="true" />
+              <Upload size={22} color="var(--text-secondary)" aria-hidden="true" />
             </div>
             <div style={{ textAlign: "center" }}>
               <p style={{ fontSize: 14, fontWeight: 600, color: "var(--white-primary)" }}>
                 Drop your resume here
               </p>
-              <p style={{ fontSize: 12, color: "rgba(235,235,235,0.35)", marginTop: 4 }}>
+              <p style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 4 }}>
                 PDF or DOCX, up to 5 MB
               </p>
             </div>

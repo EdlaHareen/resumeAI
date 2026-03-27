@@ -118,7 +118,7 @@ export function UpgradeModal({ reason, user, onClose, onSignIn, onUpgradeSuccess
         <button
           onClick={onClose}
           aria-label="Close"
-          style={{ position: "absolute", top: "1rem", right: "1rem", background: "transparent", border: "none", color: "rgba(235,235,235,0.3)", cursor: "pointer", display: "flex", alignItems: "center" }}
+          style={{ position: "absolute", top: "1rem", right: "1rem", background: "transparent", border: "none", color: "var(--text-tertiary)", cursor: "pointer", display: "flex", alignItems: "center" }}
         >
           <X size={18} />
         </button>
@@ -132,7 +132,7 @@ export function UpgradeModal({ reason, user, onClose, onSignIn, onUpgradeSuccess
             <h2 style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--white-primary)", marginBottom: "0.5rem" }}>
               You're Pro now!
             </h2>
-            <p style={{ fontSize: 14, color: "rgba(235,235,235,0.5)", marginBottom: "1.5rem", lineHeight: 1.55 }}>
+            <p style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: "1.5rem", lineHeight: 1.55 }}>
               Your subscription is active. Reload the page to access all Pro features.
             </p>
             <button
@@ -154,7 +154,7 @@ export function UpgradeModal({ reason, user, onClose, onSignIn, onUpgradeSuccess
             <h2 style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--white-primary)", marginBottom: "0.5rem", letterSpacing: "-0.01em" }}>
               {copy.title}
             </h2>
-            <p style={{ fontSize: 14, color: "rgba(235,235,235,0.5)", marginBottom: "1.5rem", lineHeight: 1.55 }}>
+            <p style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: "1.5rem", lineHeight: 1.55 }}>
               {copy.subtitle}
             </p>
 
@@ -163,7 +163,7 @@ export function UpgradeModal({ reason, user, onClose, onSignIn, onUpgradeSuccess
               {PRO_FEATURES.map((f) => (
                 <div key={f} style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
                   <Check size={13} style={{ color: "var(--lime)", flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, color: "rgba(235,235,235,0.7)" }}>{f}</span>
+                  <span style={{ fontSize: 13, color: "var(--text-primary)" }}>{f}</span>
                 </div>
               ))}
             </div>
@@ -174,7 +174,7 @@ export function UpgradeModal({ reason, user, onClose, onSignIn, onUpgradeSuccess
                 <span style={{ fontSize: "2rem", fontWeight: 700, color: "var(--white-primary)", letterSpacing: "-0.03em" }}>
                   {currency === "INR" ? "₹749" : "$9"}
                 </span>
-                <span style={{ fontSize: 14, color: "rgba(235,235,235,0.4)" }}>/month</span>
+                <span style={{ fontSize: 14, color: "var(--text-secondary)" }}>/month</span>
               </div>
               <div style={{ display: "flex", borderRadius: 9999, border: "1px solid rgba(255,255,255,0.1)", overflow: "hidden" }}>
                 {(["INR", "USD"] as const).map((c) => (
@@ -185,7 +185,7 @@ export function UpgradeModal({ reason, user, onClose, onSignIn, onUpgradeSuccess
                       padding: "0.3rem 0.75rem",
                       border: "none",
                       background: currency === c ? "rgba(204,255,0,0.15)" : "transparent",
-                      color: currency === c ? "var(--lime)" : "rgba(235,235,235,0.4)",
+                      color: currency === c ? "var(--lime)" : "var(--text-secondary)",
                       fontSize: 12, fontWeight: 700, cursor: "pointer",
                       fontFamily: "'Space Grotesk', sans-serif",
                       transition: "background 0.15s, color 0.15s",
@@ -213,7 +213,7 @@ export function UpgradeModal({ reason, user, onClose, onSignIn, onUpgradeSuccess
                 : user ? "Start Pro →" : "Sign in to upgrade →"}
             </button>
 
-            <p style={{ marginTop: "0.875rem", fontSize: 12, color: "rgba(235,235,235,0.25)", textAlign: "center" }}>
+            <p style={{ marginTop: "0.875rem", fontSize: 12, color: "var(--text-muted)", textAlign: "center" }}>
               Cancel anytime. No hidden fees.
             </p>
           </>
