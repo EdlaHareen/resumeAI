@@ -1,25 +1,64 @@
-import { useState, useEffect, Component } from "react";
+import { Component, useEffect, useState } from "react";
 import type { ErrorInfo, ReactNode } from "react";
+import type { User } from "@supabase/supabase-js";
+import { startTailor, getUserSubscription, cancelRazorpaySubscription, getBaseResume, ApiError } from "./api/client";
+import type { BaseResumeInfo } from "./api/client";
+import { AppShell } from "./components/AppShell";
+import { AuthModal } from "./components/AuthModal";
+import { FeedbackFAB } from "./components/FeedbackFAB";
+import { UpgradeModal } from "./components/UpgradeModal";
+import { incrementAnonCount, anonLimitReached } from "./lib/subscription";
+import { saveToHistory } from "./lib/history";
+import { supabase, isSupabaseConfigured } from "./lib/supabase";
+import { AdminFeedbackPage } from "./pages/AdminFeedbackPage";
+import { AdminPage } from "./pages/AdminPage";
+import { AiReviewPage } from "./pages/AiReviewPage";
+import { CoverLetterPage } from "./pages/CoverLetterPage";
+import { CoverLettersPage } from "./pages/CoverLettersPage";
+import { DashboardPage } from "./pages/DashboardPage";
+import { DonePage } from "./pages/DonePage";
+import { LandingPage } from "./pages/LandingPage";
+import { ProcessingPage } from "./pages/ProcessingPage";
+import { ResumesPage } from "./pages/ResumesPage";
+import { ReviewPage } from "./pages/ReviewPage";
+import { SettingsPage } from "./pages/SettingsPage";
+import { TailorSetupPage } from "./pages/TailorSetupPage";
+import { TemplatesPage } from "./pages/TemplatesPage";
+import { UploadPage } from "./pages/UploadPage";
+import type { AppStep, TailorResponse, TemplateId, Tier, UpgradeReason } from "./types";
 
 class ReviewErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; message: string }> {
   constructor(props: { children: ReactNode }) {
     super(props);
     this.state = { hasError: false, message: "" };
   }
+
   static getDerivedStateFromError(error: Error) {
     return { hasError: true, message: error.message };
   }
+
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("ReviewPage crash:", error, info);
   }
+
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ minHeight: "100vh", background: "#000", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Space Grotesk', sans-serif" }}>
-          <div style={{ textAlign: "center", maxWidth: 400, padding: "2rem" }}>
-            <p style={{ color: "#ccff00", fontWeight: 700, marginBottom: "0.5rem" }}>Something went wrong</p>
-            <p style={{ color: "rgba(235,235,235,0.5)", fontSize: 13, marginBottom: "1.5rem" }}>{this.state.message}</p>
-            <button onClick={() => this.setState({ hasError: false, message: "" })} style={{ padding: "0.6rem 1.5rem", background: "#ccff00", color: "#000", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+        <div
+          style={{
+            minHeight: "100vh",
+            background: "var(--bg)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontFamily: "'Inter', sans-serif",
+            padding: "1.5rem",
+          }}
+        >
+          <div className="bento-card" style={{ maxWidth: 440, width: "100%", padding: "2rem", textAlign: "center" }}>
+            <p style={{ color: "var(--accent)", fontWeight: 700, marginBottom: "0.45rem" }}>Something went wrong</p>
+            <p style={{ color: "var(--text-secondary)", fontSize: 13, marginBottom: "1.2rem" }}>{this.state.message}</p>
+            <button type="button" className="accent-btn" onClick={() => this.setState({ hasError: false, message: "" })}>
               Try again
             </button>
           </div>
@@ -29,23 +68,13 @@ class ReviewErrorBoundary extends Component<{ children: ReactNode }, { hasError:
     return this.props.children;
   }
 }
-import { LandingPage } from "./pages/LandingPage";
-import { DashboardPage } from "./pages/DashboardPage";
-import { UploadPage } from "./pages/UploadPage";
-import { ProcessingPage } from "./pages/ProcessingPage";
-import { ReviewPage } from "./pages/ReviewPage";
-import { CoverLetterPage } from "./pages/CoverLetterPage";
-import { DonePage } from "./pages/DonePage";
-import { AdminPage } from "./pages/AdminPage";
-import { AuthModal } from "./components/AuthModal";
-import { UpgradeModal } from "./components/UpgradeModal";
-import { supabase, isSupabaseConfigured } from "./lib/supabase";
-import { saveToHistory } from "./lib/history";
-import { incrementAnonCount, anonLimitReached } from "./lib/subscription";
-import type { AppStep, TailorResponse, Tier, UpgradeReason, TemplateId } from "./types";
-import { startTailor, getUserSubscription, cancelRazorpaySubscription, ApiError } from "./api/client";
-// Note: createCheckoutSession removed — now using Razorpay via UpgradeModal directly
-import type { User } from "@supabase/supabase-js";
+
+function isAdminUser(user: User | null) {
+  return Boolean(user?.user_metadata?.is_admin) || user?.email === "edlahareen@gmail.com";
+}
+
+type WorkspaceNavId = "dashboard" | "resumes" | "templates" | "cover" | "review" | "settings" | "upgrade" | "admin";
+type TailorOnboardingStage = "resume" | "template" | null;
 
 export default function App() {
   const [step, setStep] = useState<AppStep>("landing");
@@ -56,58 +85,57 @@ export default function App() {
   const [requestId, setRequestId] = useState<string | null>(null);
   const [result, setResult] = useState<TailorResponse | null>(null);
   const [currentFile, setCurrentFile] = useState<File | null>(null);
-  const [currentJd, setCurrentJd] = useState<string>("");
+  const [currentJd, setCurrentJd] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
-  const [tierReady, setTierReady] = useState(false);
   const [pendingUpgrade, setPendingUpgrade] = useState(false);
+  const [baseResume, setBaseResume] = useState<BaseResumeInfo | null>(null);
+  const [baseResumeLoading, setBaseResumeLoading] = useState(false);
+  const [tailorOnboardingStage, setTailorOnboardingStage] = useState<TailorOnboardingStage>(null);
+  const [tailorTemplateConfirmed, setTailorTemplateConfirmed] = useState(false);
+  const [tailorOnboardingActive, setTailorOnboardingActive] = useState(false);
   const [templateId, setTemplateId] = useState<TemplateId>(() => {
     return (localStorage.getItem("resumeai_template") as TemplateId) || "jake";
   });
+
+  const isAdmin = isAdminUser(user);
 
   useEffect(() => {
     localStorage.setItem("resumeai_template", templateId);
   }, [templateId]);
 
   useEffect(() => {
-    // Detect /admin URL — set step before auth resolves
     if (window.location.pathname === "/admin") {
       setStep("admin");
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      const u = session?.user ?? null;
-      setUser(u);
-      if (u) {
-        fetchTier(u.id);
-        const params = new URLSearchParams(window.location.search);
-        if (params.get("payment") === "success") {
-          window.history.replaceState({}, "", window.location.pathname);
-          setStep("dashboard");
-        } else {
-          setStep(prev => prev === "admin" ? "admin" : "dashboard");
-        }
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      if (currentUser) {
+        void fetchTier(currentUser.id);
+        void refreshBaseResume(currentUser);
+        setStep((prev) => (prev === "admin" ? "admin" : "dashboard"));
       }
       setSessionReady(true);
     });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      const u = session?.user ?? null;
-      setUser(u);
-      if (u) fetchTier(u.id);
-      else setTier("free");
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      if (currentUser) {
+        void fetchTier(currentUser.id);
+        void refreshBaseResume(currentUser);
+      } else {
+        setTier("free");
+        setBaseResume(null);
+        setTailorOnboardingActive(false);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
-
-  // Gate dashboard for free-tier users — redirect to upload + show upgrade modal
-  useEffect(() => {
-    if (step === "dashboard" && tierReady && tier === "free" && user && isSupabaseConfigured) {
-      setUpgradeReason("history");
-      setStep("upload");
-    }
-  }, [step, tierReady, tier, user]);
 
   async function fetchTier(userId: string) {
     try {
@@ -116,8 +144,32 @@ export default function App() {
       setTier(info.tier);
     } catch {
       setTier("free");
+    }
+  }
+
+  async function refreshBaseResume(targetUser: User | null = user): Promise<BaseResumeInfo | null> {
+    if (!targetUser) {
+      setBaseResume(null);
+      return null;
+    }
+
+    setBaseResumeLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        const emptyInfo = { found: false };
+        setBaseResume(emptyInfo);
+        return emptyInfo;
+      }
+      const info = await getBaseResume(session.access_token);
+      setBaseResume(info);
+      return info;
+    } catch {
+      const emptyInfo = { found: false };
+      setBaseResume(emptyInfo);
+      return emptyInfo;
     } finally {
-      setTierReady(true);
+      setBaseResumeLoading(false);
     }
   }
 
@@ -126,31 +178,34 @@ export default function App() {
   }
 
   async function handleCancelSubscription() {
-    if (!window.confirm("Cancel your Pro subscription? You'll lose access at the end of the current billing period.")) return;
+    if (!window.confirm("Cancel your Pro subscription? You'll keep access until the current billing period ends.")) {
+      return;
+    }
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       await cancelRazorpaySubscription(session?.access_token ?? "");
       setTier("free");
-    } catch (e) {
-      alert(e instanceof Error ? e.message : "Cancellation failed. Please try again.");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Cancellation failed. Please try again.");
     }
   }
 
   function handleGetStarted() {
     if (!isSupabaseConfigured || user) {
       setStep(user ? "dashboard" : "upload");
-    } else {
-      setShowAuth(true);
+      return;
     }
+    setShowAuth(true);
   }
 
   function handleStartPro() {
     if (user) {
       showUpgrade("tailor_limit");
-    } else {
-      setPendingUpgrade(true);
-      setShowAuth(true);
+      return;
     }
+    setPendingUpgrade(true);
+    setShowAuth(true);
   }
 
   function handleAuthSuccess() {
@@ -160,17 +215,26 @@ export default function App() {
       showUpgrade("tailor_limit");
       return;
     }
-    // Preserve admin step if user logged in from /admin route
-    setStep(prev => prev === "admin" ? "admin" : "dashboard");
+    setStep((prev) => (prev === "admin" ? "admin" : "dashboard"));
   }
 
-  function handleSignOut() {
+  async function handleSignOut() {
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // best-effort sign-out
+    }
     setUser(null);
+    setTier("free");
+    setBaseResume(null);
+    setTailorOnboardingStage(null);
+    setTailorTemplateConfirmed(false);
+    setTailorOnboardingActive(false);
+    setResult(null);
     setStep("landing");
   }
 
   async function handleSubmit(file: File, jd: string) {
-    // Anonymous: allow 1 tailor, then require sign-up
     if (!user) {
       if (anonLimitReached()) {
         setShowAuth(true);
@@ -178,20 +242,22 @@ export default function App() {
       }
       incrementAnonCount();
     }
+
     setLoading(true);
     setError(null);
     setCurrentFile(file);
     setCurrentJd(jd);
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const rid = await startTailor(file, jd, user?.id ?? undefined, session?.access_token ?? undefined);
-      setRequestId(rid);
+      const nextRequestId = await startTailor(file, jd, user?.id ?? undefined, session?.access_token ?? undefined);
+      setRequestId(nextRequestId);
       setStep("processing");
-    } catch (e) {
-      if (e instanceof ApiError && e.code === "limit_reached") {
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "limit_reached") {
         showUpgrade("tailor_limit");
       } else {
-        setError(e instanceof Error ? e.message : "Something went wrong. Please try again.");
+        setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -200,13 +266,16 @@ export default function App() {
 
   function handlePipelineDone(response: TailorResponse) {
     setResult(response);
-    if (user) saveToHistory(response, currentFile?.name ?? "", currentJd).catch(console.error);
+    setTailorOnboardingActive(false);
+    if (user) {
+      void saveToHistory(response, currentFile?.name ?? "", currentJd).catch(console.error);
+    }
     setStep("review");
   }
 
   function handlePipelineError(message: string) {
     setError(message);
-    setStep("upload");
+    setStep(user ? "tailor-setup" : "upload");
   }
 
   function handleReopen(response: TailorResponse) {
@@ -214,19 +283,164 @@ export default function App() {
     setStep("review");
   }
 
+  function handleOpenCoverLetterGenerator(response: TailorResponse) {
+    setResult(response);
+    setStep("cover-letter");
+  }
+
   function handleStartOver() {
-    setStep(user ? "dashboard" : "upload");
     setResult(null);
     setError(null);
     setCurrentFile(null);
     setCurrentJd("");
     setRequestId(null);
-  }
-
-  /** Clicking ResumeAI logo from any page goes to dashboard (or upload if not signed in). */
-  function handleLogoClick() {
+    setTailorOnboardingStage(null);
+    setTailorTemplateConfirmed(false);
+    setTailorOnboardingActive(false);
     setStep(user ? "dashboard" : "upload");
   }
+
+  function handleLogoClick() {
+    setStep(user ? "dashboard" : "landing");
+  }
+
+  function handleTemplateChange(nextTemplate: TemplateId) {
+    setTemplateId(nextTemplate);
+    if (tailorOnboardingStage === "template") {
+      setTailorTemplateConfirmed(true);
+    }
+  }
+
+  async function handleStartTailoringFlow() {
+    if (!user) {
+      setStep("upload");
+      return;
+    }
+
+    setError(null);
+    const info = await refreshBaseResume(user);
+    if (info?.found) {
+      setTailorOnboardingActive(false);
+      setTailorOnboardingStage(null);
+      setTailorTemplateConfirmed(false);
+      setStep("tailor-setup");
+      return;
+    }
+
+    setTailorOnboardingActive(true);
+    setTailorOnboardingStage("resume");
+    setTailorTemplateConfirmed(false);
+    setStep("resumes");
+  }
+
+  function handleBaseResumeReady(info: BaseResumeInfo) {
+    setBaseResume(info);
+    setError(null);
+    setTailorOnboardingActive(true);
+    setTailorOnboardingStage("template");
+    setTailorTemplateConfirmed(false);
+    setStep("templates");
+  }
+
+  function handleProceedToTailorSetup() {
+    setError(null);
+    setTailorOnboardingStage(null);
+    setTailorTemplateConfirmed(false);
+    setStep("tailor-setup");
+  }
+
+  async function handleTailorSetupSubmit(jobInput: string) {
+    if (!user || !baseResume?.found || !baseResume.storage_path) {
+      setTailorOnboardingActive(true);
+      setTailorOnboardingStage("resume");
+      setStep("resumes");
+      return;
+    }
+
+    try {
+      const { data, error: downloadError } = await supabase.storage.from("resumes").download(baseResume.storage_path);
+      if (downloadError || !data) {
+        throw new Error("Failed to load your default resume. Please reselect it.");
+      }
+
+      const file = new File([data], baseResume.filename || "resume.pdf", {
+        type: data.type || "application/pdf",
+      });
+
+      await handleSubmit(file, jobInput);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "We couldn't start tailoring with your default resume.");
+      setStep("tailor-setup");
+    }
+  }
+
+  function handleWorkspaceNav(id: WorkspaceNavId) {
+    switch (id) {
+      case "dashboard":
+        setStep("dashboard");
+        break;
+      case "resumes":
+        setStep("resumes");
+        break;
+      case "templates":
+        setStep("templates");
+        break;
+      case "cover":
+        setStep("cover-letters");
+        break;
+      case "review":
+        setStep(result ? "review" : "ai-review");
+        break;
+      case "settings":
+        setStep("settings");
+        break;
+      case "upgrade":
+        showUpgrade("tailor_limit");
+        break;
+      case "admin":
+        if (isAdmin) setStep("admin");
+        break;
+    }
+  }
+
+  function renderWorkspacePage(
+    activeNav: WorkspaceNavId | undefined,
+    title: string,
+    content: ReactNode,
+    topbarRight?: ReactNode,
+  ) {
+    if (!user) return null;
+
+    return (
+      <AppShell
+        user={user}
+        tier={tier}
+        activeNav={activeNav}
+        topbarTitle={title}
+        topbarRight={topbarRight}
+        onNav={(id) => handleWorkspaceNav(id as WorkspaceNavId)}
+        onSignOut={() => {
+          void handleSignOut();
+        }}
+        onDashboard={() => setStep("dashboard")}
+        isAdmin={isAdmin}
+      >
+        {content}
+      </AppShell>
+    );
+  }
+
+  const newResumeButton = (
+    <button
+      type="button"
+      className="accent-btn"
+      style={{ fontSize: 13, padding: "0.45rem 1rem" }}
+      onClick={() => { void handleStartTailoringFlow(); }}
+      disabled={baseResumeLoading}
+    >
+      {baseResumeLoading ? "Loading..." : "+ New Resume"}
+    </button>
+  );
 
   function renderPage() {
     switch (step) {
@@ -234,18 +448,19 @@ export default function App() {
         return <LandingPage onGetStarted={handleGetStarted} onStartPro={handleStartPro} onLogoClick={handleLogoClick} />;
 
       case "dashboard":
-        return user ? (
+        return renderWorkspacePage(
+          "dashboard",
+          "Dashboard",
           <DashboardPage
-            user={user}
+            user={user!}
             tier={tier}
-            onNewResume={() => setStep("upload")}
-            onSignOut={handleSignOut}
-            onLogoClick={handleLogoClick}
-            onBack={() => setStep("landing")}
+            onNewResume={() => { void handleStartTailoringFlow(); }}
+            onOpenSection={(nextStep) => setStep(nextStep)}
             onReopen={handleReopen}
-            onCancelSubscription={handleCancelSubscription}
-          />
-        ) : null;
+            onUpgrade={showUpgrade}
+          />,
+          newResumeButton,
+        );
 
       case "upload":
         return (
@@ -257,44 +472,102 @@ export default function App() {
             user={user}
             tier={tier}
             templateId={templateId}
-            onTemplateChange={setTemplateId}
+            onTemplateChange={handleTemplateChange}
             onDashboard={() => setStep("dashboard")}
-            onSignOut={handleSignOut}
+            onSignOut={() => {
+              void handleSignOut();
+            }}
+            onNewResume={() => { void handleStartTailoringFlow(); }}
             onLogoClick={handleLogoClick}
             onUpgrade={() => showUpgrade("tailor_limit")}
           />
         );
 
+      case "tailor-setup":
+        return renderWorkspacePage(
+          undefined,
+          "Tailor Resume",
+          <TailorSetupPage
+            baseResume={baseResume}
+            templateId={templateId}
+            loading={loading}
+            error={error}
+            onboarding={tailorOnboardingActive}
+            onClearError={() => setError(null)}
+            onChangeResume={() => {
+              setTailorOnboardingActive(tailorOnboardingActive || !baseResume?.found);
+              setTailorOnboardingStage(tailorOnboardingActive || !baseResume?.found ? "resume" : null);
+              setStep("resumes");
+            }}
+            onChangeTemplate={() => {
+              setTailorOnboardingStage(tailorOnboardingActive ? "template" : null);
+              setStep("templates");
+            }}
+            onSubmit={(jobInput) => {
+              void handleTailorSetupSubmit(jobInput);
+            }}
+          />,
+        );
+
       case "processing":
-        return requestId ? (
-          <ProcessingPage
-            requestId={requestId}
-            onComplete={handlePipelineDone}
-            onError={handlePipelineError}
-          />
-        ) : null;
+        return requestId ? <ProcessingPage requestId={requestId} onComplete={handlePipelineDone} onError={handlePipelineError} /> : null;
 
       case "review":
-        return result ? (
-          <ReviewErrorBoundary>
-          <ReviewPage
-            result={result}
-            onDone={() => setStep("done")}
-            onCoverLetter={() => {
-              if (tier !== "pro") { showUpgrade("cover_letter"); return; }
-              setStep("cover-letter");
-            }}
-            user={user}
-            tier={tier}
-            templateId={templateId}
-            onDashboard={() => setStep("dashboard")}
-            onSignOut={handleSignOut}
-            onLogoClick={handleLogoClick}
-            onUpgrade={showUpgrade}
-            onCancelSubscription={handleCancelSubscription}
-          />
-          </ReviewErrorBoundary>
-        ) : null;
+        return result
+          ? user
+            ? renderWorkspacePage(
+                "review",
+                "Resume Review",
+                <ReviewErrorBoundary>
+                  <ReviewPage
+                    result={result}
+                    onDone={() => setStep("done")}
+                    onCoverLetter={() => {
+                      if (tier !== "pro") {
+                        showUpgrade("cover_letter");
+                        return;
+                      }
+                      setStep("cover-letter");
+                    }}
+                    user={user}
+                    tier={tier}
+                    templateId={templateId}
+                    onDashboard={() => setStep("dashboard")}
+                    onSignOut={() => {
+                      void handleSignOut();
+                    }}
+                    onLogoClick={handleLogoClick}
+                    onUpgrade={showUpgrade}
+                    onCancelSubscription={handleCancelSubscription}
+                  />
+                </ReviewErrorBoundary>,
+              )
+            : (
+              <ReviewErrorBoundary>
+                <ReviewPage
+                  result={result}
+                  onDone={() => setStep("done")}
+                  onCoverLetter={() => {
+                    if (tier !== "pro") {
+                      showUpgrade("cover_letter");
+                      return;
+                    }
+                    setStep("cover-letter");
+                  }}
+                  user={null}
+                  tier={tier}
+                  templateId={templateId}
+                  onDashboard={() => setStep("dashboard")}
+                  onSignOut={() => {
+                    void handleSignOut();
+                  }}
+                  onLogoClick={handleLogoClick}
+                  onUpgrade={showUpgrade}
+                  onCancelSubscription={handleCancelSubscription}
+                />
+              </ReviewErrorBoundary>
+            )
+          : null;
 
       case "cover-letter":
         return result ? (
@@ -304,10 +577,86 @@ export default function App() {
             onDone={() => setStep("review")}
             user={user}
             onDashboard={() => setStep("dashboard")}
-            onSignOut={handleSignOut}
+            onSignOut={() => {
+              void handleSignOut();
+            }}
+            onNewResume={() => { void handleStartTailoringFlow(); }}
             onLogoClick={handleLogoClick}
           />
         ) : null;
+
+      case "resumes":
+        return renderWorkspacePage(
+          "resumes",
+          "Resume Library",
+          <ResumesPage
+            user={user!}
+            tier={tier}
+            onNewResume={() => { void handleStartTailoringFlow(); }}
+            onReopen={handleReopen}
+            onUpgrade={showUpgrade}
+            onboardingGuide={tailorOnboardingStage === "resume"}
+            onBaseResumeReady={handleBaseResumeReady}
+            onContinueSetup={() => {
+              setTailorOnboardingStage("template");
+              setStep("templates");
+            }}
+          />,
+          newResumeButton,
+        );
+
+      case "templates":
+        return renderWorkspacePage(
+          "templates",
+          "Templates",
+          <TemplatesPage
+            templateId={templateId}
+            tier={tier}
+            onTemplateChange={handleTemplateChange}
+            onUpgrade={showUpgrade}
+            onboardingGuide={tailorOnboardingStage === "template"}
+            templateConfirmed={tailorTemplateConfirmed}
+            onTemplateConfirmed={() => setTailorTemplateConfirmed(true)}
+            onProceed={handleProceedToTailorSetup}
+          />,
+        );
+
+      case "cover-letters":
+        return renderWorkspacePage(
+          "cover",
+          "Cover Letters",
+          <CoverLettersPage
+            tier={tier}
+            activeResult={result}
+            onNewResume={() => { void handleStartTailoringFlow(); }}
+            onOpenGenerator={handleOpenCoverLetterGenerator}
+            onUpgrade={showUpgrade}
+          />,
+        );
+
+      case "ai-review":
+        return renderWorkspacePage(
+          "review",
+          "AI Review",
+          <AiReviewPage activeResult={result} onNewResume={() => { void handleStartTailoringFlow(); }} onReopen={handleReopen} />,
+          result ? (
+            <button type="button" className="ghost-btn" onClick={() => setStep("review")}>
+              Resume Review
+            </button>
+          ) : newResumeButton,
+        );
+
+      case "settings":
+        return renderWorkspacePage(
+          "settings",
+          "Settings",
+          <SettingsPage
+            user={user!}
+            tier={tier}
+            onCancelSubscription={handleCancelSubscription}
+            onUpgrade={() => showUpgrade("tailor_limit")}
+          />,
+        );
 
       case "done":
         return (
@@ -315,22 +664,36 @@ export default function App() {
             onStartOver={handleStartOver}
             user={user}
             onDashboard={() => setStep("dashboard")}
-            onSignOut={handleSignOut}
+            onSignOut={() => {
+              void handleSignOut();
+            }}
             onLogoClick={handleLogoClick}
           />
         );
+
       case "admin":
         if (!sessionReady) return null;
         if (!user) {
           if (!showAuth) setShowAuth(true);
           return null;
         }
-        if (!user.user_metadata?.is_admin) {
-          // Not admin — silently redirect to dashboard
+        if (!isAdmin) {
           setTimeout(() => setStep("dashboard"), 0);
           return null;
         }
         return <AdminPage user={user} onLogoClick={handleLogoClick} onBack={() => setStep("dashboard")} />;
+
+      case "admin-feedback":
+        if (!sessionReady) return null;
+        if (!user) {
+          if (!showAuth) setShowAuth(true);
+          return null;
+        }
+        if (!isAdmin) {
+          setTimeout(() => setStep("dashboard"), 0);
+          return null;
+        }
+        return <AdminFeedbackPage onBack={() => setStep("dashboard")} />;
 
       default:
         return <LandingPage onGetStarted={handleGetStarted} onStartPro={handleStartPro} onLogoClick={handleLogoClick} />;
@@ -339,19 +702,24 @@ export default function App() {
 
   return (
     <>
-      {showAuth && (
-        <AuthModal onClose={() => setShowAuth(false)} onAuth={handleAuthSuccess} />
-      )}
+      {showAuth && <AuthModal onClose={() => setShowAuth(false)} onAuth={handleAuthSuccess} />}
       {upgradeReason && (
         <UpgradeModal
           reason={upgradeReason}
           user={user}
           onClose={() => setUpgradeReason(null)}
-          onSignIn={() => { setUpgradeReason(null); setShowAuth(true); }}
-          onUpgradeSuccess={() => { if (user) fetchTier(user.id); setUpgradeReason(null); }}
+          onSignIn={() => {
+            setUpgradeReason(null);
+            setShowAuth(true);
+          }}
+          onUpgradeSuccess={() => {
+            if (user) void fetchTier(user.id);
+            setUpgradeReason(null);
+          }}
         />
       )}
       {renderPage()}
+      {user && step !== "landing" && step !== "admin-feedback" && <FeedbackFAB />}
     </>
   );
 }

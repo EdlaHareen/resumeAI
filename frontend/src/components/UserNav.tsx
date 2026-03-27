@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { LogOut, LayoutDashboard, ChevronDown, FileText, Shield, X } from "lucide-react";
+import { LogOut, LayoutDashboard, ChevronDown, FileText, Shield, X, MessageSquare } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import type { User } from "@supabase/supabase-js";
 import type { Tier } from "../types";
@@ -11,10 +11,11 @@ interface Props {
   onSignOut: () => void;
   onNewResume: () => void;
   onCancelSubscription?: () => void;
+  onFeedbackInbox?: () => void;
 }
 
-export function UserNav({ user, tier, onDashboard, onSignOut, onNewResume, onCancelSubscription }: Props) {
-  const isAdmin = Boolean(user.user_metadata?.is_admin);
+export function UserNav({ user, tier, onDashboard, onSignOut, onNewResume, onCancelSubscription, onFeedbackInbox }: Props) {
+  const isAdmin = Boolean(user.user_metadata?.is_admin) || user.email === "edlahareen@gmail.com";
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -71,7 +72,7 @@ export function UserNav({ user, tier, onDashboard, onSignOut, onNewResume, onCan
         <span style={{ fontSize: 13, fontWeight: 600, color: "var(--white-primary)", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {name.split(" ")[0]}
         </span>
-        <ChevronDown size={13} color="rgba(235,235,235,0.4)" style={{ transition: "transform 0.2s", transform: open ? "rotate(180deg)" : "rotate(0deg)" }} />
+        <ChevronDown size={13} color="var(--text-secondary)" style={{ transition: "transform 0.2s", transform: open ? "rotate(180deg)" : "rotate(0deg)" }} />
       </button>
 
       {/* Dropdown */}
@@ -91,7 +92,7 @@ export function UserNav({ user, tier, onDashboard, onSignOut, onNewResume, onCan
           {/* User info header */}
           <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
             <p style={{ fontSize: 13, fontWeight: 700, color: "var(--white-primary)", marginBottom: "0.2rem" }}>{name}</p>
-            <p style={{ fontSize: 11, color: "rgba(235,235,235,0.35)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.email}</p>
+            <p style={{ fontSize: 11, color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.email}</p>
           </div>
 
           {/* Actions */}
@@ -99,7 +100,10 @@ export function UserNav({ user, tier, onDashboard, onSignOut, onNewResume, onCan
             {[
               { icon: <LayoutDashboard size={14} />, label: "My Dashboard", action: () => { setOpen(false); onDashboard(); } },
               { icon: <FileText size={14} />, label: "Tailor New Resume", action: () => { setOpen(false); onNewResume(); } },
-              ...(isAdmin ? [{ icon: <Shield size={14} />, label: "Admin Panel", action: () => { setOpen(false); window.location.href = "/admin"; } }] : []),
+              ...(isAdmin ? [
+                { icon: <Shield size={14} />, label: "Admin Panel", action: () => { setOpen(false); window.location.href = "/admin"; } },
+                { icon: <MessageSquare size={14} />, label: "Feedback Inbox", action: () => { setOpen(false); onFeedbackInbox?.(); } },
+              ] : []),
               ...(tier === "pro" && onCancelSubscription ? [{ icon: <X size={14} />, label: "Cancel subscription", action: () => { setOpen(false); onCancelSubscription(); } }] : []),
             ].map(({ icon, label, action }) => (
               <button
@@ -115,7 +119,7 @@ export function UserNav({ user, tier, onDashboard, onSignOut, onNewResume, onCan
                   background: "transparent",
                   border: "none",
                   cursor: "pointer",
-                  color: "rgba(235,235,235,0.7)",
+                  color: "var(--text-primary)",
                   fontSize: 13,
                   fontWeight: 500,
                   fontFamily: "'Space Grotesk', sans-serif",
@@ -123,7 +127,7 @@ export function UserNav({ user, tier, onDashboard, onSignOut, onNewResume, onCan
                   transition: "background 0.15s, color 0.15s",
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(204,255,0,0.08)"; e.currentTarget.style.color = "var(--lime)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "rgba(235,235,235,0.7)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-primary)"; }}
               >
                 {icon}
                 {label}

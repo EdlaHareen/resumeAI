@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import type { FormEvent } from "react";
 import { UploadZone } from "../components/UploadZone";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { UserNav } from "../components/UserNav";
@@ -7,7 +8,6 @@ import { getBaseResume, uploadBaseResume } from "../api/client";
 import { supabase } from "../lib/supabase";
 import { TemplateId, Tier } from "../types";
 import { TEMPLATES, TemplateThumbnail, TemplatePreviewModal } from "../components/TemplateMockup";
-import { Lock } from "lucide-react"; // I'll check if lucide is available, if not I'll use a string or SVG
 
 interface Props {
   onSubmit: (file: File, jd: string) => void;
@@ -17,6 +17,7 @@ interface Props {
   user: User | null;
   onDashboard: () => void;
   onSignOut: () => void;
+  onNewResume: () => void;
   onLogoClick: () => void;
   tier: Tier;
   templateId: TemplateId;
@@ -27,7 +28,7 @@ interface Props {
 const MIN_JD_WORDS = 50;
 
 export function UploadPage({ 
-  onSubmit, loading, error, onClearError, user, onDashboard, onSignOut, onLogoClick, 
+  onSubmit, loading, error, onClearError, user, onDashboard, onSignOut, onNewResume, onLogoClick,
   tier, templateId, onTemplateChange, onUpgrade 
 }: Props) {
   const [file, setFile] = useState<File | null>(null);
@@ -59,7 +60,7 @@ export function UploadPage({
   const jdTooShort = jd.trim().length > 0 && jdWordCount < MIN_JD_WORDS;
   const canSubmit = (file !== null || usingBase) && jdWordCount >= MIN_JD_WORDS && !loading;
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!canSubmit) return;
 
@@ -100,9 +101,9 @@ export function UploadPage({
           Resume<span style={{ color: "var(--lime)" }}>AI</span>
         </button>
         {user ? (
-          <UserNav user={user} onDashboard={onDashboard} onSignOut={onSignOut} onNewResume={() => {}} />
+          <UserNav user={user} onDashboard={onDashboard} onSignOut={onSignOut} onNewResume={onNewResume} />
         ) : (
-          <span className="mono" style={{ color: "rgba(235,235,235,0.35)" }}>step 1 of 3</span>
+          <span className="mono" style={{ color: "var(--text-tertiary)" }}>step 1 of 3</span>
         )}
       </nav>
 
@@ -114,7 +115,7 @@ export function UploadPage({
             Tailor your resume<br />
             <span style={{ color: "var(--lime)" }}>to any job in 60 seconds.</span>
           </h1>
-          <p style={{ marginTop: "0.75rem", fontSize: 15, color: "rgba(235,235,235,0.5)", lineHeight: 1.6 }}>
+          <p style={{ marginTop: "0.75rem", fontSize: 15, color: "var(--text-secondary)", lineHeight: 1.6 }}>
             Upload your resume and paste the job description. Our AI rewrites your bullets to match — without making anything up.
           </p>
         </div>
@@ -130,7 +131,7 @@ export function UploadPage({
             {/* Resume upload */}
             <div className="bento-card" style={{ padding: "1.5rem" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-                <label className="mono" style={{ color: "rgba(235,235,235,0.5)" }}>
+                <label className="mono" style={{ color: "var(--text-secondary)" }}>
                   your resume
                 </label>
                 {usingBase && (
@@ -155,7 +156,7 @@ export function UploadPage({
                   <p style={{ color: "var(--white-primary)", fontWeight: 600, fontSize: 15 }}>
                     Loaded: {baseResume.filename}
                   </p>
-                  <p style={{ fontSize: 12, color: "rgba(235,235,235,0.4)", marginTop: "0.4rem" }}>
+                  <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: "0.4rem" }}>
                     Your stored base resume will be used for tailoring.
                   </p>
                 </div>
@@ -177,7 +178,7 @@ export function UploadPage({
                         onChange={(e) => setSaveAsBase(e.target.checked)}
                         style={{ cursor: "pointer" }}
                       />
-                      <label htmlFor="saveAsBase" style={{ fontSize: 13, color: "rgba(235,235,235,0.6)", cursor: "pointer" }}>
+                      <label htmlFor="saveAsBase" style={{ fontSize: 13, color: "var(--text-secondary)", cursor: "pointer" }}>
                         {baseResume?.found ? "Replace my current base resume with this one" : "Save this as my base resume for future use"}
                       </label>
                     </div>
@@ -189,7 +190,7 @@ export function UploadPage({
             {/* Template Gallery */}
             <div className="bento-card" style={{ padding: "1.5rem" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "1rem" }}>
-                <label className="mono" style={{ color: "rgba(235,235,235,0.5)" }}>
+                <label className="mono" style={{ color: "var(--text-secondary)" }}>
                   resume template
                 </label>
                 <div style={{ fontSize: 11, color: "var(--lime)", fontWeight: 600 }}>
@@ -271,7 +272,7 @@ export function UploadPage({
                       </div>
                       <div style={{ marginTop: "0.6rem", textAlign: "center" }}>
                         <div style={{ fontSize: 12, color: isActive ? "var(--lime)" : "var(--white-primary)", fontWeight: 600 }}>{t.label}</div>
-                        {t.pro && <div style={{ fontSize: 9, color: "rgba(235,235,235,0.3)", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 2 }}>PRO</div>}
+                        {t.pro && <div style={{ fontSize: 9, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 2 }}>PRO</div>}
                       </div>
                     </div>
                   );
@@ -282,14 +283,14 @@ export function UploadPage({
             {/* Job description */}
             <div className="bento-card" style={{ padding: "1.5rem" }}>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "1rem" }}>
-                <label htmlFor="jd" className="mono" style={{ color: "rgba(235,235,235,0.5)" }}>
+                <label htmlFor="jd" className="mono" style={{ color: "var(--text-secondary)" }}>
                   job description
                 </label>
                 <span
                   style={{
                     fontSize: 11,
                     fontFamily: "'JetBrains Mono', monospace",
-                    color: jdTooShort ? "#f87171" : "rgba(235,235,235,0.3)",
+                    color: jdTooShort ? "#f87171" : "var(--text-tertiary)",
                   }}
                   aria-live="polite"
                 >
@@ -359,7 +360,7 @@ export function UploadPage({
           </div>
         </form>
 
-        <p style={{ marginTop: "1.5rem", textAlign: "center", fontSize: 12, color: "rgba(235,235,235,0.25)" }}>
+        <p style={{ marginTop: "1.5rem", textAlign: "center", fontSize: 12, color: "var(--text-muted)" }}>
           Your resume is processed in memory and never stored on our servers.
         </p>
       </main>
@@ -378,4 +379,3 @@ export function UploadPage({
     </div>
   );
 }
-

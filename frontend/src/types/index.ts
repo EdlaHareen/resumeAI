@@ -79,7 +79,7 @@ export interface BulletState {
 }
 
 // App state machine
-export type AppStep = "landing" | "dashboard" | "upload" | "processing" | "review" | "cover-letter" | "done" | "admin";
+export type AppStep = "landing" | "dashboard" | "upload" | "tailor-setup" | "processing" | "review" | "cover-letter" | "done" | "admin" | "admin-feedback" | "resumes" | "templates" | "cover-letters" | "ai-review" | "settings";
 
 export type Tier = "free" | "pro";
 export type UpgradeReason = "tailor_limit" | "docx" | "cover_letter" | "history";

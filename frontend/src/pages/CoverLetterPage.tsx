@@ -15,6 +15,7 @@ interface CoverLetterPageProps {
   user: User | null;
   onDashboard: () => void;
   onSignOut: () => void;
+  onNewResume: () => void;
   onLogoClick: () => void;
 }
 
@@ -25,6 +26,7 @@ export function CoverLetterPage({
   user,
   onDashboard,
   onSignOut,
+  onNewResume,
   onLogoClick,
 }: CoverLetterPageProps) {
   const [coverLetter, setCoverLetter] = useState("");
@@ -129,9 +131,9 @@ export function CoverLetterPage({
           Resume<span style={{ color: "var(--lime)" }}>AI</span>
         </button>
         {user ? (
-          <UserNav user={user} onDashboard={onDashboard} onSignOut={onSignOut} onNewResume={() => {}} />
+          <UserNav user={user} onDashboard={onDashboard} onSignOut={onSignOut} onNewResume={onNewResume} />
         ) : (
-          <span className="mono" style={{ color: "rgba(235,235,235,0.35)" }}>optional — cover letter</span>
+          <span className="mono" style={{ color: "var(--text-tertiary)" }}>optional — cover letter</span>
         )}
       </nav>
 
@@ -145,7 +147,7 @@ export function CoverLetterPage({
           <h1 style={{ fontSize: "1.75rem", fontWeight: 700, color: "var(--white-primary)", letterSpacing: "-0.02em" }}>
             Your Cover Letter
           </h1>
-          <p style={{ marginTop: "0.5rem", fontSize: 14, color: "rgba(235,235,235,0.45)" }}>
+          <p style={{ marginTop: "0.5rem", fontSize: 14, color: "var(--text-secondary)" }}>
             Tailored to match the job description. Edit freely before downloading.
           </p>
         </div>
@@ -168,7 +170,7 @@ export function CoverLetterPage({
             <div style={{
               display: "flex", flexDirection: "column", alignItems: "center",
               justifyContent: "center", gap: "1rem", padding: "4rem 2rem",
-              color: "rgba(235,235,235,0.4)",
+              color: "var(--text-secondary)",
             }}>
               <Loader2 size={28} style={{ animation: "spin 1s linear infinite", color: "var(--lime)" }} aria-hidden="true" />
               <p style={{ fontSize: 14 }}>Generating your cover letter…</p>
@@ -210,7 +212,7 @@ export function CoverLetterPage({
                 fontFamily: "'JetBrains Mono', monospace",
               }}>
                 {wordCount} words
-                <span style={{ color: "rgba(235,235,235,0.25)", marginLeft: "0.5rem" }}>· target: 280–330</span>
+                <span style={{ color: "var(--text-muted)", marginLeft: "0.5rem" }}>· target: 280–330</span>
               </div>
             </>
           )}
@@ -251,7 +253,7 @@ export function CoverLetterPage({
                 padding: "0.625rem 1.25rem", borderRadius: 9999,
                 border: "1px solid rgba(255,255,255,0.12)",
                 background: copied ? "rgba(255,255,255,0.06)" : "transparent",
-                color: "rgba(235,235,235,0.6)",
+                color: "var(--text-secondary)",
                 fontSize: 13, fontWeight: 600,
                 cursor: "pointer", fontFamily: "'Space Grotesk', sans-serif",
                 transition: "background 0.2s",
@@ -270,7 +272,7 @@ export function CoverLetterPage({
                 padding: "0.625rem 1.25rem", borderRadius: 9999,
                 border: "1px solid rgba(255,255,255,0.08)",
                 background: "transparent",
-                color: "rgba(235,235,235,0.4)",
+                color: "var(--text-secondary)",
                 fontSize: 13, fontWeight: 600,
                 cursor: "pointer", fontFamily: "'Space Grotesk', sans-serif",
               }}
@@ -317,6 +319,12 @@ export function CoverLetterPage({
               session?.access_token,
             );
           }}
+          refreshKey={JSON.stringify({
+            coverLetter,
+            hiringManager: metadata.hiring_manager,
+            companyName: metadata.company_name,
+            jobTitle: metadata.job_title,
+          })}
         />
       </aside>
 
