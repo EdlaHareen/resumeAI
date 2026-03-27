@@ -155,3 +155,57 @@ def set_tier(user_id: str, body: SetTierRequest, admin_id: str = Depends(_verify
         return {"ok": True}
     except Exception:
         raise HTTPException(status_code=503, detail="Could not update subscription")
+
+
+# ─── Grant / Revoke Admin ───────────────────────────────────────────────────────
+
+DEFAULT_ADMIN_EMAIL = "edlahareen@gmail.com"
+
+
+class EmailRequest(BaseModel):
+    email: str
+
+
+def _set_user_admin_metadata(email: str, is_admin: bool) -> bool:
+    """Find user by email in Supabase Auth and set is_admin in user_metadata."""
+    try:
+        auth_data = _get("/auth/v1/admin/users", "per_page=1000&page=1")
+        users = auth_data.get("users", [])
+        target = next((u for u in users if u.get("email") == email), None)
+        if not target:
+            return False
+
+        user_id = target["id"]
+        # PATCH user metadata via Admin API
+        payload = json.dumps({"user_metadata": {"is_admin": is_admin}}).encode()
+        url = f"{_URL}/auth/v1/admin/users/{user_id}"
+        req = urllib.request.Request(url, method="PUT", data=payload)
+        req.add_header("Authorization", f"Bearer {_KEY}")
+        req.add_header("apikey", _KEY)
+        req.add_header("Content-Type", "application/json")
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            resp.read()
+        return True
+    except Exception as e:
+        print(f"Error setting admin metadata for {email}: {e}")
+        return False
+
+
+@router.post("/grant-admin")
+def grant_admin(body: EmailRequest, admin_id: str = Depends(_verify_admin)):
+    """Grant admin access to a user by email."""
+    success = _set_user_admin_metadata(body.email, True)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"User {body.email!r} not found. They must have an existing account.")
+    return {"ok": True, "message": f"Admin granted to {body.email}"}
+
+
+@router.post("/revoke-admin")
+def revoke_admin(body: EmailRequest, admin_id: str = Depends(_verify_admin)):
+    """Revoke admin access from a user by email."""
+    if body.email == DEFAULT_ADMIN_EMAIL:
+        raise HTTPException(status_code=403, detail="Cannot revoke the default admin.")
+    success = _set_user_admin_metadata(body.email, False)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"User {body.email!r} not found.")
+    return {"ok": True, "message": f"Admin revoked for {body.email}"}
