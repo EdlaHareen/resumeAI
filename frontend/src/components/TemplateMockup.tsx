@@ -85,26 +85,59 @@ export function TemplateMockup({ id }: MockupProps) {
       <div style={nameStyle}>DASHIELL HAMMETT</div>
       <div style={subHeaderStyle}>555-0199 | detective@continental.com | linkedin.com/in/dash | San Francisco, CA</div>
 
+      {isModern && (
+        <>
+          <div style={sectionHeaderStyle}>SUMMARY</div>
+          <div style={{ fontSize: 10, color: "#333", lineHeight: 1.4, fontFamily: "Arial, sans-serif" }}>
+            Results-driven software engineer with 8+ years of experience building scalable data systems and
+            full-stack applications. Proven track record in leading cross-functional teams, optimizing
+            CI/CD pipelines, and delivering production ML systems that process millions of records daily.
+          </div>
+        </>
+      )}
+
       <div style={sectionHeaderStyle}>TECHNICAL SKILLS</div>
-      <div style={{ fontSize: 10, color: "#111", fontFamily: "Arial, sans-serif" }}>
-        <strong>Languages:</strong> Python, TypeScript, SQL, Go, LaTeX<br/>
-        <strong>Frameworks:</strong> React, FastAPI, Node.js, Tailwind CSS
+      <div style={{ fontSize: 10, color: "#111", lineHeight: 1.4, fontFamily: "Arial, sans-serif" }}>
+        <strong>Languages:</strong> Python, TypeScript, SQL, Go, Rust, LaTeX<br/>
+        <strong>Frameworks:</strong> React, FastAPI, Node.js, Django, Tailwind CSS, Next.js<br/>
+        <strong>Tools:</strong> Docker, Kubernetes, Terraform, AWS, PostgreSQL, Redis, Apache Kafka
       </div>
 
       <div style={sectionHeaderStyle}>WORK EXPERIENCE</div>
       <div>
         <div style={entryHeaderStyle}>
           <span>Continental Detective Agency</span>
-          <span>Aug. 1923 – Present</span>
+          <span>Aug. 2021 – Present</span>
         </div>
         <div style={entrySubHeaderStyle}>
-          <span>Lead Investigator</span>
+          <span>Senior Software Engineer</span>
           <span>San Francisco, CA</span>
         </div>
         {[
-          "Solved high-profile cases involving the Maltese Falcon using advanced deduplication logic.",
-          "Refactored street-level surveillance workflows, increasing efficiency by 40%.",
-          "Collaborated with local authorities to ensure 99.9% uptime for public safety protocols."
+          "Architected a distributed event-processing pipeline handling 2M+ daily transactions with sub-200ms latency using Kafka and Redis.",
+          "Led migration of monolithic REST API to microservices architecture, reducing deployment time by 65% and improving fault isolation.",
+          "Designed and shipped a real-time analytics dashboard serving 500+ internal users, reducing manual reporting effort by 40%.",
+          "Mentored a team of 4 junior engineers through code reviews, pair programming, and technical design sessions.",
+        ].map((b, i) => (
+          <div key={i} style={bulletStyle}>
+            <span style={{ position: "absolute", left: -12 }}>{bulletChar}</span>
+            {b}
+          </div>
+        ))}
+      </div>
+      <div style={{ marginTop: 6 }}>
+        <div style={entryHeaderStyle}>
+          <span>Gutting & Associates</span>
+          <span>May 2018 – Jul. 2021</span>
+        </div>
+        <div style={entrySubHeaderStyle}>
+          <span>Software Engineer</span>
+          <span>New York, NY</span>
+        </div>
+        {[
+          "Built a full-stack customer portal with React and FastAPI, onboarding 12,000+ users in the first quarter post-launch.",
+          "Optimized PostgreSQL query performance across 15 critical endpoints, reducing p95 latency from 1.2s to 180ms.",
+          "Implemented CI/CD pipelines with GitHub Actions and Docker, cutting release cycles from bi-weekly to daily.",
         ].map((b, i) => (
           <div key={i} style={bulletStyle}>
             <span style={{ position: "absolute", left: -12 }}>{bulletChar}</span>
@@ -116,12 +149,27 @@ export function TemplateMockup({ id }: MockupProps) {
       <div style={sectionHeaderStyle}>PROJECTS</div>
       <div>
         <div style={entryHeaderStyle}>
-          <span>Red Harvest Analysis Tool | <i>Python, NLP</i></span>
-          <span>Jan. 1929</span>
+          <span>Red Harvest Analysis Tool | <i>Python, NLP, FastAPI</i></span>
+          <span>Jan. 2023</span>
         </div>
         {[
-          "Developed an NLP-based threat assessment tool to analyze gang communications in Personville.",
-          "Implemented a real-time alerting system for cross-border asset tracking."
+          "Developed an NLP-powered document classification system processing 50K+ documents daily with 94% accuracy.",
+          "Implemented a real-time alerting pipeline with WebSocket streaming and Redis pub/sub for instant notifications.",
+        ].map((b, i) => (
+          <div key={i} style={bulletStyle}>
+            <span style={{ position: "absolute", left: -12 }}>{bulletChar}</span>
+            {b}
+          </div>
+        ))}
+      </div>
+      <div style={{ marginTop: 4 }}>
+        <div style={entryHeaderStyle}>
+          <span>CloudDeploy CLI | <i>Go, Terraform, AWS</i></span>
+          <span>Sep. 2022</span>
+        </div>
+        {[
+          "Created an open-source CLI tool for one-command cloud deployments, reaching 1.2K GitHub stars in 3 months.",
+          "Integrated Terraform plan previews and cost estimation, helping teams reduce infrastructure spend by 25%.",
         ].map((b, i) => (
           <div key={i} style={bulletStyle}>
             <span style={{ position: "absolute", left: -12 }}>{bulletChar}</span>
@@ -133,35 +181,62 @@ export function TemplateMockup({ id }: MockupProps) {
       <div style={sectionHeaderStyle}>EDUCATION</div>
       <div>
         <div style={entryHeaderStyle}>
-          <span>University of Hard Knocks</span>
-          <span>June 1915</span>
+          <span>Stanford University</span>
+          <span>June 2018</span>
         </div>
         <div style={entrySubHeaderStyle}>
-          <span>Bachelor of Science in Deduction</span>
+          <span>Bachelor of Science in Computer Science</span>
           <span>GPA: 3.9/4.0</span>
         </div>
       </div>
+
+      {!isModern && (
+        <>
+          <div style={sectionHeaderStyle}>CERTIFICATIONS</div>
+          <div style={{ fontSize: 10, color: "#333", lineHeight: 1.4, fontFamily: "Arial, sans-serif" }}>
+            AWS Solutions Architect – Associate · Kubernetes Application Developer (CKAD) · Google Cloud Professional Data Engineer
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
 export function TemplateThumbnail({ id }: MockupProps) {
-  const SCALE = 0.32;
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [scale, setScale] = React.useState(0.5);
+  const MOCKUP_WIDTH = 520;
+
+  React.useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const updateScale = () => {
+      setScale(el.clientWidth / MOCKUP_WIDTH);
+    };
+    updateScale();
+    const observer = new ResizeObserver(updateScale);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <div style={{
-      width: "100%",
-      aspectRatio: "1 / 1.4142",
-      overflow: "hidden",
-      borderRadius: "0.4rem",
-      background: "#fff",
-      position: "relative",
-    }}>
+    <div
+      ref={containerRef}
+      style={{
+        width: "100%",
+        aspectRatio: "1 / 1.4142",
+        overflow: "hidden",
+        borderRadius: "0.4rem",
+        background: "#fff",
+        position: "relative",
+      }}
+    >
       <div style={{
         position: "absolute",
         top: 0, left: 0,
         transformOrigin: "top left",
-        transform: `scale(${SCALE})`,
-        width: `${100 / SCALE}%`,
+        transform: `scale(${scale})`,
+        width: MOCKUP_WIDTH,
         pointerEvents: "none",
       }}>
         <TemplateMockup id={id} />
@@ -220,8 +295,8 @@ export function TemplatePreviewModal({ template, tier, onSelect, onUpgrade, onCl
           <button onClick={onClose} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: 24, padding: 0 }}>✕</button>
         </div>
 
-        <div style={{ flex: 1, overflow: "auto", padding: "1.5rem", display: "flex", justifyContent: "center", background: "#1a1a1a" }}>
-          <div style={{ boxShadow: "0 20px 50px rgba(0,0,0,0.5)", borderRadius: 4, overflow: "hidden" }}>
+        <div style={{ flex: 1, minHeight: 0, overflow: "auto", padding: "1.5rem", display: "flex", justifyContent: "center", background: "#1a1a1a" }}>
+          <div style={{ boxShadow: "0 20px 50px rgba(0,0,0,0.5)", borderRadius: 4, flexShrink: 0 }}>
             <TemplateMockup id={template.id} />
           </div>
         </div>

@@ -264,21 +264,34 @@ cd frontend && npm run dev -- --host 0.0.0.0
 8. Cover letter page showed "timed out" immediately in React strict mode — fixed: removed `firedRef` guard, fixed `AbortError` propagation in `generateCoverLetter`
 9. EdgeCaseAlert duplicate key warning — fixed: use `type-index` as key instead of `type` alone
 10. EdgeCase alerts always expanded, cluttering ReviewPage — fixed: collapsed into single toggle button
+11. `cover_letter.py:_parse_json_response` — "Extra data" JSON bug — fixed: 3-tier parsing (raw_decode → json_repair → cleaned)
+12. `subscription_store.increment_usage` — was non-atomic read-then-write — fixed: uses Supabase RPC `increment_tailor_usage`
+13. Usage incremented before pipeline success — fixed: moved to `orchestrator.py` post-success callback
+14. Download IDOR — omitting `user_id` bypassed ownership check — fixed: if session has owner, requester MUST match
+15. `supabase_store._req` silently swallowed errors — fixed: uses `logger.error()` now
+16. `App.tsx` setState during render (admin pages) — fixed: moved to useEffect
+17. Admin hardcoded email bypass — fixed: only `is_admin` metadata checked
+18. SSE stream hung forever if pipeline died — fixed: 5-minute timeout
+19. `InMemorySessionStore` O(n) eviction on every access — fixed: lazy per-key eviction
+20. Progress store memory leak on client disconnect — fixed: TTL-based auto-eviction (10 min)
+21. Cover letter `onDone` stuck in review loop — fixed: logged-in users go to dashboard
+22. Scores computed on original text, not tailored — fixed: uses tailored bullet text
+23. Health check reported `supabase_backend: false` — fixed: falls back to `VITE_SUPABASE_URL`
+24. Vite proxy targeting wrong port (8000 vs 8001) — fixed in `vite.config.ts`
+25. Keyword highlighting matched "AI" inside "maintaining" — fixed: word-boundary regex + min 3-char filter
+26. Tailored bullets just inserted generic "AI" everywhere — fixed: Stage 2+3 prompt overhaul
 
 ## Known Bugs (Not Yet Fixed)
 
-### Critical
-- `cover_letter.py:67` — `_strip_fences` has same "Extra data" JSON bug as the one fixed in `call_llm_json`
-- `subscription_store.py` — `increment_usage` is non-atomic (read-then-write); concurrent requests can lose a count; needs Supabase RPC
-- `subscription_store._req` — silently swallows all errors returning `None`; Supabase outage downgrades Pro users to free
-
 ### Medium
-- `App.tsx:handleSubmit` — limit error detected via fragile string match `msg.includes("3 free tailors")`; should propagate error `code` field
 - `App.tsx` — `saveToHistory` called for all logged-in users regardless of tier; free users accumulate history they can't view
 - `DownloadBar` — `tier` prop defaults to `"free"` if not passed; any future reuse will silently show Pro locks
+- `DiffViewer.tsx:14` — `acceptedCount` not memoized
+- Dashboard `select("*")` loads full TailorResponse JSON on every load
+- Small race window: 2 concurrent requests can both pass free tier limit check (increment is post-success)
 
 ### Minor
-- `CoverLetterPage` — Re-open flow from Dashboard has no way back to Dashboard after cover letter; `onDone` always goes to ReviewPage
+- Razorpay subscriptions broken — needs Orders API switch (see NEXT UP)
 
 ## What Was Implemented (v2 Quick Wins — Session 2)
 
@@ -504,3 +517,42 @@ INSERT INTO user_subscriptions (user_id, tier, status, updated_at)
 VALUES ('your-uuid', 'pro', 'active', now())
 ON CONFLICT (user_id) DO UPDATE SET tier = 'pro', status = 'active', updated_at = now();
 ```
+
+## What Was Implemented (v6 — Session 10, 2026-04-01/02)
+
+### 15 Bug Fixes (see Known Bugs Fixed #11–26 above for full list)
+
+### Admin = Pro (Backend Enforcement)
+- `backend/utils/auth.py` — NEW `VerifiedUser` dataclass + `verify_token_full()` returns `(user_id, is_admin)` from Supabase JWT `user_metadata`
+- `backend/utils/subscription_store.py` — `get_tier(user_id, is_admin=False)` returns `"pro"` if admin. `get_subscription_info()` same.
+- `backend/api/routes/razorpay_routes.py` — `GET /razorpay/subscription/{id}` uses `verify_token_full`, passes `is_admin`
+- `backend/api/routes/stream.py` — admins bypass free tier usage limit
+- `backend/api/routes/cover_letter.py` — `_require_pro` checks admin status via `verify_token_full`
+
+### Tailoring Quality Overhaul (Stage 2 + 3 + Frontend)
+**Problem:** Tailored bullets inserted generic "AI" into sentences instead of meaningful restructuring. Highlighting matched "ai" inside "maintaining", "daily".
+
+**Stage 2** (`prompts.py` STAGE2_SYSTEM):
+- `ats_keywords` must be specific multi-word phrases (3+ words preferred), not generic "AI", "ML"
+- `jd_tools` must be named tools (min 2 chars), not generic terms
+- Shows GOOD vs BAD examples in the prompt
+
+**Stage 3** (`prompts.py` STAGE3_SYSTEM + `stage3_rewrite.py`):
+- Prompt includes before/after examples of good vs lazy rewrites
+- Core instruction: "restructure the sentence to lead with what the JD prioritizes"
+- Rule 9: return UNCHANGED if bullet already matches — better than lazy insertion
+- Rule 10: keyword dedup — each keyword in at most 2-3 bullets
+- `keywords_added`/`injected_keywords` must be specific phrases, not generic single words
+- Bullets now include section/role/company context (not flat text)
+
+**Frontend** (`BulletRow.tsx`):
+- Keywords < 3 chars filtered out
+- Uses `\b` word-boundary regex instead of substring matching
+- Sorts keywords by length descending (longer phrases match first)
+
+### Infrastructure Fixes
+- `health.py` — falls back to `VITE_SUPABASE_URL` (matches actual store code)
+- `vite.config.ts` — proxy target fixed from `localhost:8000` to `localhost:8001`
+- `progress_store.py` — TTL-based auto-eviction with `is_expired()` helper
+- `session_store.py` — lazy eviction on `get()`, periodic bulk eviction on `set()`
+- `scoring.py` — expanded action verb set from 26 to ~95 verbs

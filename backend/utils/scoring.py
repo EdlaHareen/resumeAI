@@ -2,11 +2,23 @@ import re
 from api.models.responses import Scores
 
 STRONG_ACTION_VERBS = {
-    "achieved", "accelerated", "built", "created", "delivered", "designed",
-    "developed", "drove", "engineered", "established", "expanded", "generated",
-    "implemented", "improved", "increased", "launched", "led", "managed",
-    "optimized", "reduced", "scaled", "shipped", "solved", "streamlined",
-    "transformed", "utilized",
+    "accelerated", "achieved", "administered", "analyzed", "architected",
+    "automated", "built", "championed", "collaborated", "configured",
+    "consolidated", "coordinated", "created", "customized", "decreased",
+    "defined", "delivered", "deployed", "designed", "developed", "directed",
+    "drove", "enabled", "engineered", "established", "evaluated", "exceeded",
+    "executed", "expanded", "facilitated", "formulated", "founded",
+    "generated", "grew", "identified", "implemented", "improved", "increased",
+    "initiated", "innovated", "integrated", "introduced", "launched", "led",
+    "maintained", "managed", "mentored", "migrated", "modernized",
+    "monitored", "negotiated", "operated", "optimized", "orchestrated",
+    "organized", "overhauled", "partnered", "pioneered", "planned",
+    "presented", "produced", "programmed", "proposed", "published",
+    "re-architected", "rebuilt", "reduced", "refactored", "redesigned",
+    "resolved", "restructured", "revamped", "scaled", "secured", "shipped",
+    "simplified", "solved", "spearheaded", "standardized", "streamlined",
+    "strengthened", "supervised", "surpassed", "trained", "transformed",
+    "unified", "upgraded", "utilized",
 }
 
 

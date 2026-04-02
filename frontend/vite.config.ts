@@ -11,7 +11,7 @@ export default defineConfig({
     proxy: {
       "/api": {
         // Inside Docker, use the service name 'backend'; locally use localhost
-        target: (globalThis as any).process?.env?.VITE_API_URL || "http://localhost:8000",
+        target: (globalThis as any).process?.env?.VITE_API_URL || "http://localhost:8001",
         changeOrigin: true,
       },
     },

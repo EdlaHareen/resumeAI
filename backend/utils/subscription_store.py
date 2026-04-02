@@ -70,8 +70,10 @@ def _rpc(func: str, params: dict) -> Optional[object]:
         raise RuntimeError(f"Supabase RPC {func} unreachable: {e}") from e
 
 
-def get_tier(user_id: str) -> str:
-    """Returns 'pro' or 'free'. 'halted' is treated as pro (Razorpay retry grace period)."""
+def get_tier(user_id: str, is_admin: bool = False) -> str:
+    """Returns 'pro' or 'free'. Admins always get 'pro'. 'halted' treated as pro (Razorpay grace)."""
+    if is_admin:
+        return "pro"
     rows = _req("GET", "user_subscriptions", params=f"user_id=eq.{urllib.parse.quote(user_id, safe='')}&select=tier,status")
     if rows and isinstance(rows, list) and len(rows) > 0:
         sub = rows[0]
@@ -145,8 +147,10 @@ def deactivate_by_subscription_id(stripe_subscription_id: str) -> None:
     _req("PATCH", "user_subscriptions", body=body, params=f"stripe_subscription_id=eq.{urllib.parse.quote(stripe_subscription_id, safe='')}")
 
 
-def get_subscription_info(user_id: str) -> dict:
-    """Return tier + usage for the frontend."""
+def get_subscription_info(user_id: str, is_admin: bool = False) -> dict:
+    """Return tier + usage for the frontend. Admins always get pro."""
+    if is_admin:
+        return {"tier": "pro", "status": "admin", "period_end": None, "subscription_id": None}
     rows = _req("GET", "user_subscriptions", params=f"user_id=eq.{urllib.parse.quote(user_id, safe='')}&select=tier,status,period_end,stripe_subscription_id")
     if rows and isinstance(rows, list) and len(rows) > 0:
         sub = rows[0]

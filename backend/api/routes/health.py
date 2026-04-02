@@ -21,8 +21,9 @@ async def health():
         (os.getenv("KV_REST_API_URL") and os.getenv("KV_REST_API_TOKEN"))
         or (os.getenv("UPSTASH_REDIS_REST_URL") and os.getenv("UPSTASH_REDIS_REST_TOKEN"))
     )
+    supabase_url = os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL", "")
     has_supabase_backend = bool(
-        os.getenv("SUPABASE_URL") and os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        supabase_url and os.getenv("SUPABASE_SERVICE_ROLE_KEY")
     )
 
     if has_redis:

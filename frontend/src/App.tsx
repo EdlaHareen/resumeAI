@@ -1,4 +1,4 @@
-import { Component, useEffect, useState } from "react";
+import { Component, useEffect, useRef, useState } from "react";
 import type { ErrorInfo, ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
 import { startTailor, getUserSubscription, cancelRazorpaySubscription, getBaseResume, ApiError } from "./api/client";
@@ -70,7 +70,7 @@ class ReviewErrorBoundary extends Component<{ children: ReactNode }, { hasError:
 }
 
 function isAdminUser(user: User | null) {
-  return Boolean(user?.user_metadata?.is_admin) || user?.email === "edlahareen@gmail.com";
+  return Boolean(user?.user_metadata?.is_admin);
 }
 
 type WorkspaceNavId = "dashboard" | "resumes" | "templates" | "cover" | "review" | "settings" | "upgrade" | "admin";
@@ -104,6 +104,19 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("resumeai_template", templateId);
   }, [templateId]);
+
+  // Handle admin pages: show auth if not logged in, redirect if not admin
+  useEffect(() => {
+    if (!sessionReady) return;
+    if (step !== "admin" && step !== "admin-feedback") return;
+    if (!user) {
+      setShowAuth(true);
+      return;
+    }
+    if (!isAdmin) {
+      setStep("dashboard");
+    }
+  }, [step, sessionReady, user, isAdmin]);
 
   useEffect(() => {
     if (window.location.pathname === "/admin") {
@@ -574,7 +587,7 @@ export default function App() {
           <CoverLetterPage
             resumeSummary={result.resume_summary}
             jdAnalysis={result.jd_analysis}
-            onDone={() => setStep("review")}
+            onDone={() => setStep(user ? "dashboard" : "review")}
             user={user}
             onDashboard={() => setStep("dashboard")}
             onSignOut={() => {
@@ -673,26 +686,14 @@ export default function App() {
 
       case "admin":
         if (!sessionReady) return null;
-        if (!user) {
-          if (!showAuth) setShowAuth(true);
-          return null;
-        }
-        if (!isAdmin) {
-          setTimeout(() => setStep("dashboard"), 0);
-          return null;
-        }
+        if (!user) return null; // useEffect below handles showing auth
+        if (!isAdmin) return null; // useEffect below redirects
         return <AdminPage user={user} onLogoClick={handleLogoClick} onBack={() => setStep("dashboard")} />;
 
       case "admin-feedback":
         if (!sessionReady) return null;
-        if (!user) {
-          if (!showAuth) setShowAuth(true);
-          return null;
-        }
-        if (!isAdmin) {
-          setTimeout(() => setStep("dashboard"), 0);
-          return null;
-        }
+        if (!user) return null;
+        if (!isAdmin) return null;
         return <AdminFeedbackPage onBack={() => setStep("dashboard")} />;
 
       default:

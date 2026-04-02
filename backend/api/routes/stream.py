@@ -7,6 +7,7 @@ Streaming tailor endpoints:
 import asyncio
 import json
 import uuid
+import logging
 
 from typing import Optional
 from fastapi import APIRouter, File, Form, Header, HTTPException, Request, UploadFile
@@ -21,10 +22,13 @@ from limiter import limiter
 import utils.subscription_store as sub_store
 import utils.auth as auth_utils
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 MAX_FILE_SIZE = 5 * 1024 * 1024
 MIN_JD_WORDS = 50
+SSE_TIMEOUT_SECONDS = 300  # 5 minutes max for SSE stream
 
 
 @router.post("/tailor/start")
@@ -74,9 +78,12 @@ async def start_tailor(
 
     # If a JWT is provided, verify it and use the authoritative user_id from the token.
     # This prevents passing a fake/other user's user_id via the form field.
+    is_admin = False
     if authorization:
         try:
-            user_id = await asyncio.to_thread(auth_utils.verify_token, authorization)
+            verified = await asyncio.to_thread(auth_utils.verify_token_full, authorization)
+            user_id = verified.user_id
+            is_admin = verified.is_admin
         except HTTPException as e:
             if e.status_code == 401:
                 raise  # invalid token — reject
@@ -84,8 +91,11 @@ async def start_tailor(
         except Exception:
             user_id = None  # unexpected error — proceed as unauthenticated
 
-    # Enforce free tier tailor limit for logged-in users
-    if user_id:
+    # Enforce free tier tailor limit for logged-in users.
+    # Usage is NOT incremented here — it's incremented in the orchestrator
+    # only after the pipeline succeeds, so failed runs don't consume credits.
+    # Admins bypass the limit entirely.
+    if user_id and not is_admin:
         try:
             tier = await asyncio.to_thread(sub_store.get_tier, user_id)
             if tier == "free":
@@ -95,11 +105,10 @@ async def start_tailor(
                         status_code=403,
                         detail={"code": "limit_reached", "message": "You've used all 3 free tailors this month. Upgrade to Pro for unlimited."},
                     )
-            await asyncio.to_thread(sub_store.increment_usage, user_id)
         except HTTPException:
             raise  # limit_reached must propagate
         except Exception:
-            # Supabase unreachable — default to free, allow through, skip usage increment
+            # Supabase unreachable — allow through
             pass
 
     request_id = str(uuid.uuid4())
@@ -121,10 +130,19 @@ async def stream_tailor_progress(request_id: str, request: Request):
         raise HTTPException(status_code=404, detail="Streaming session not found. Please re-submit your resume.")
 
     async def generate():
+        import time
         offset = 0
+        started_at = time.monotonic()
         while True:
             if await request.is_disconnected():
+                progress_store.cleanup(request_id)
                 break
+
+            # Timeout: abort if pipeline takes too long
+            if time.monotonic() - started_at > SSE_TIMEOUT_SECONDS:
+                yield f"data: {json.dumps({'type': 'error', 'message': 'Pipeline timed out. Please try again.'})}\n\n"
+                progress_store.cleanup(request_id)
+                return
 
             batch = progress_store.get_from(request_id, offset)
             for event in batch:

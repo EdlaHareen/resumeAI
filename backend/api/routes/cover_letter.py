@@ -65,30 +65,51 @@ import re as _re
 
 
 def _parse_json_response(text: str) -> dict:
-    """Strip markdown fences and parse the first valid JSON object, ignoring trailing text."""
+    """Strip markdown fences and parse the first valid JSON object, ignoring trailing text.
+    Uses 3-tier parsing: raw_decode → json_repair → cleaned parse (mirrors call_llm_json).
+    """
     text = text.strip()
     # Strip ```json ... ``` or ``` ... ``` fences
     if "```" in text:
         m = _re.search(r"```(?:json)?\s*([\s\S]*?)```", text)
         if m:
             text = m.group(1).strip()
-    # Use raw_decode to stop after the first valid JSON object,
-    # ignoring any trailing prose the model may have appended.
-    decoder = json.JSONDecoder()
+
     start = next((i for i, c in enumerate(text) if c in "{["), 0)
-    obj, _ = decoder.raw_decode(text, start)
+    text = text[start:]
+
+    # 1st attempt: strict JSON via raw_decode
+    decoder = json.JSONDecoder()
+    try:
+        obj, _ = decoder.raw_decode(text, 0)
+        return obj
+    except json.JSONDecodeError:
+        pass
+
+    # 2nd attempt: json-repair handles unescaped quotes, trailing commas, etc.
+    try:
+        from json_repair import repair_json
+        repaired = repair_json(text, return_objects=True)
+        if isinstance(repaired, (dict, list)):
+            return repaired
+    except Exception:
+        pass
+
+    # 3rd attempt: strip trailing commas then strict parse
+    cleaned = _re.sub(r',\s*([}\]])', r'\1', text)
+    obj, _ = decoder.raw_decode(cleaned, 0)
     return obj
 
 
 async def _require_pro(authorization: Optional[str]) -> None:
-    """Raise 403 if the user is not on a Pro tier. No-ops if Supabase is not configured (dev mode)."""
+    """Raise 403 if the user is not on a Pro tier. Admins always pass. No-ops if Supabase is not configured (dev mode)."""
     if not sub_store._URL:
         return  # Supabase not configured — skip gate in dev
     if not authorization:
         raise HTTPException(status_code=401, detail={"code": "unauthorized", "message": "Sign in required."})
     try:
-        user_id = await asyncio.to_thread(auth_utils.verify_token, authorization)
-        tier = await asyncio.to_thread(sub_store.get_tier, user_id)
+        verified = await asyncio.to_thread(auth_utils.verify_token_full, authorization)
+        tier = await asyncio.to_thread(sub_store.get_tier, verified.user_id, verified.is_admin)
     except HTTPException:
         raise
     except Exception:

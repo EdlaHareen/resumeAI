@@ -5,7 +5,7 @@ export type AccentId = (typeof ACCENT_IDS)[number];
 
 export const DEFAULT_THEME: ThemeMode = "dark";
 export const DEFAULT_ACCENT: AccentId = "lime";
-export const LIGHT_MODE_ACCENT: AccentId = "blue";
+export const LIGHT_MODE_ACCENT: AccentId = "lime";
 
 function sanitizeTheme(value: string | null): ThemeMode {
   return value === "light" ? "light" : "dark";
@@ -15,10 +15,7 @@ function sanitizeAccent(value: string | null): AccentId {
   return (ACCENT_IDS as readonly string[]).includes(value ?? "") ? (value as AccentId) : DEFAULT_ACCENT;
 }
 
-export function normalizeAccentForTheme(theme: ThemeMode, accent: AccentId): AccentId {
-  if (theme === "light" && accent === "lime") {
-    return LIGHT_MODE_ACCENT;
-  }
+export function normalizeAccentForTheme(_theme: ThemeMode, accent: AccentId): AccentId {
   return accent;
 }
 
@@ -38,6 +35,5 @@ export function applyThemeState(theme: ThemeMode, accent: AccentId): { theme: Th
 }
 
 export function applyAccentSelection(theme: ThemeMode, accent: AccentId): { theme: ThemeMode; accent: AccentId } {
-  const nextTheme = theme === "light" && accent === "lime" ? "dark" : theme;
-  return applyThemeState(nextTheme, accent);
+  return applyThemeState(theme, accent);
 }

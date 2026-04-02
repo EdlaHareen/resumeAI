@@ -76,9 +76,41 @@ export function UpgradeModal({ reason, user, onClose, onSignIn, onUpgradeSuccess
 
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token ?? "";
-      const { short_url } = await createRazorpaySubscription(user.id, currency, accessToken);
-      const callbackUrl = `${window.location.origin}/api/razorpay/callback`;
-      window.location.href = `${short_url}?callback_url=${encodeURIComponent(callbackUrl)}`;
+      const { subscription_id, key_id } = await createRazorpaySubscription(user.id, currency, accessToken);
+
+      // Open Razorpay Checkout popup for subscription payment
+      await new Promise<void>((resolve, reject) => {
+        const rzp = new window.Razorpay({
+          key: key_id,
+          subscription_id,
+          name: "ResumeAI",
+          description: "Pro Monthly Subscription",
+          handler: async (response: { razorpay_payment_id: string; razorpay_subscription_id: string; razorpay_signature: string }) => {
+            try {
+              await verifyRazorpayPayment(
+                {
+                  user_id: user.id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_subscription_id: response.razorpay_subscription_id,
+                  razorpay_signature: response.razorpay_signature,
+                },
+                accessToken,
+              );
+              resolve();
+            } catch (err) {
+              reject(err);
+            }
+          },
+          prefill: {
+            email: user.email ?? "",
+          },
+          theme: { color: "#ccff00" },
+          modal: {
+            ondismiss: () => reject(new Error("dismissed")),
+          },
+        });
+        rzp.open();
+      });
 
       setSuccess(true);
       onUpgradeSuccess?.();

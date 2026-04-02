@@ -1,5 +1,5 @@
 from __future__ import annotations
-from generators.latex_templates import TemplateConfig
+from generators.latex_generator import TemplateConfig
 
 CONFIG = TemplateConfig(
     template_id="soham",

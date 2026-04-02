@@ -1,10 +1,13 @@
 from __future__ import annotations
 import json
+import logging
 import os
 import urllib.error
 import urllib.parse
 import urllib.request
 from typing import Any, Dict, Optional
+
+logger = logging.getLogger(__name__)
 
 _URL = (os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL", "")).rstrip("/")
 _KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
@@ -36,10 +39,10 @@ def _req(method: str, table: str, body: Optional[bytes] = None, params: str = ""
             return json.loads(raw)
     except urllib.error.HTTPError as e:
         err_body = e.read().decode("utf-8")
-        print(f"DB Error ({method} {table}): {e.code} {e.reason} - {err_body}")
+        logger.error("DB Error (%s %s): %s %s - %s", method, table, e.code, e.reason, err_body)
         return None
     except Exception as e:
-        print(f"DB Error ({method} {table}): {e}")
+        logger.error("DB Error (%s %s): %s", method, table, e)
         return None
 
 
@@ -150,9 +153,11 @@ def get_base_resume(user_id: str) -> Optional[Dict[str, Any]]:
 
 
 def upsert_base_resume(user_id: str, filename: str, storage_path: str) -> bool:
-    """Set a resume as the default base for a user. Unsets previous defaults."""
+    """Set a resume as the default base for a user. Unsets previous defaults.
+    Steps run sequentially — if step 2 fails, step 1 is retried to restore the old default.
+    """
     # 1. Unset any existing default
-    _req(
+    unset_resp = _req(
         "PATCH",
         "base_resumes",
         body=json.dumps({"is_default": False}).encode("utf-8"),
@@ -170,4 +175,13 @@ def upsert_base_resume(user_id: str, filename: str, storage_path: str) -> bool:
         "base_resumes",
         body=json.dumps(payload).encode("utf-8"),
     )
+    if resp is None and unset_resp is not None:
+        # Step 2 failed but step 1 succeeded — try to restore old default
+        logger.error("upsert_base_resume: insert failed after unsetting old default for user %s", user_id)
+        _req(
+            "PATCH",
+            "base_resumes",
+            body=json.dumps({"is_default": True}).encode("utf-8"),
+            params=f"user_id=eq.{urllib.parse.quote(user_id, safe='')}&storage_path=neq.{urllib.parse.quote(storage_path, safe='')}&limit=1",
+        )
     return resp is not None

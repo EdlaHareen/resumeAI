@@ -1,5 +1,6 @@
 import asyncio
 import concurrent.futures
+import logging
 import uuid
 from typing import Any, List, Dict, Optional
 
@@ -11,9 +12,11 @@ from pipeline.stage4_validate import validate_rewrites
 from utils.diff import build_diff, get_revert_edge_cases
 from utils.scoring import compute_scores
 import utils.supabase_store as supabase_store
+import utils.subscription_store as sub_store
 from pipeline.session_store import get_store, SESSION_TTL_SECONDS
 from pipeline import progress_store
 
+logger = logging.getLogger(__name__)
 _store = get_store()
 
 
@@ -96,7 +99,22 @@ def _run_pipeline_sync(
     verdicts = validate_rewrites(resume_structured, rewrites, jd_analysis_raw)
 
     diff = build_diff(resume_structured, rewrites, verdicts)
-    scores = compute_scores(resume_structured, jd_analysis_raw, resume_text)
+
+    # Compute scores on the tailored text (accepted rewrites applied),
+    # not the original resume_text, so scores reflect actual improvements.
+    tailored_text_parts = []
+    for section in resume_structured.get("sections", []):
+        for entry in section.get("entries", []):
+            for bullet in entry.get("bullets", []):
+                bid = bullet["bullet_id"]
+                verdict = verdicts.get(bid, {})
+                is_reverted = verdict.get("verdict") == "revert" or verdict.get("is_fabricated")
+                if not is_reverted and bid in rewrites:
+                    tailored_text_parts.append(rewrites[bid].get("tailored", bullet["text"]))
+                else:
+                    tailored_text_parts.append(bullet["text"])
+    tailored_resume_text = "\n".join(tailored_text_parts)
+    scores = compute_scores(resume_structured, jd_analysis_raw, tailored_resume_text)
     edge_cases = _detect_edge_cases(resume_structured, jd_text)
     edge_cases += get_revert_edge_cases(resume_structured, rewrites, verdicts)
 
@@ -196,6 +214,12 @@ async def run_pipeline_background(
         result = await asyncio.to_thread(
             _run_pipeline_sync, resume_text, jd_text, request_id, user_id, original_filename
         )
+        # Increment usage only after pipeline succeeds — failed runs don't consume credits
+        if user_id:
+            try:
+                await asyncio.to_thread(sub_store.increment_usage, user_id)
+            except Exception as e:
+                logger.warning("Failed to increment usage for %s: %s", user_id, e)
         progress_store.push(request_id, {"type": "done", "result": result.model_dump()})
     except Exception as e:
         progress_store.push(request_id, {"type": "error", "message": str(e)})

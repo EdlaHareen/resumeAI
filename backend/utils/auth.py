@@ -7,6 +7,8 @@ import json
 import os
 import urllib.error
 import urllib.request
+from dataclasses import dataclass
+from typing import Optional
 
 from fastapi import Header, HTTPException
 
@@ -15,10 +17,26 @@ _ANON_KEY = os.getenv("VITE_SUPABASE_ANON_KEY", "") or os.getenv("SUPABASE_ANON_
 _SERVICE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 
 
+@dataclass
+class VerifiedUser:
+    user_id: str
+    is_admin: bool
+
+
 def verify_token(authorization: str) -> str:
     """
     Validate a Supabase Bearer JWT.
     Returns the verified user_id (UUID string).
+    Raises HTTPException 401 on invalid/expired token.
+    Raises HTTPException 503 if Supabase is not configured or unreachable.
+    """
+    return verify_token_full(authorization).user_id
+
+
+def verify_token_full(authorization: str) -> VerifiedUser:
+    """
+    Validate a Supabase Bearer JWT.
+    Returns VerifiedUser with user_id and is_admin.
     Raises HTTPException 401 on invalid/expired token.
     Raises HTTPException 503 if Supabase is not configured or unreachable.
     """
@@ -43,4 +61,8 @@ def verify_token(authorization: str) -> str:
     user_id = user.get("id")
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token: no user ID.")
-    return user_id
+
+    metadata = user.get("user_metadata") or {}
+    is_admin = bool(metadata.get("is_admin"))
+
+    return VerifiedUser(user_id=user_id, is_admin=is_admin)

@@ -69,10 +69,18 @@ Schema:
 }
 
 Rules:
-- ats_keywords: exact phrases an ATS would scan for (include acronyms and full forms)
-- jd_tools: specific tool, technology, framework, and platform names mentioned in the JD (e.g. "Apache Spark", "Kubernetes", "FastAPI", "dbt", "Snowflake"). Extract the exact names as written. These will be used for keyword injection.
-- required_skills: explicitly stated as required/must-have
-- preferred_skills: nice-to-have, bonus, preferred
+- ats_keywords: SPECIFIC multi-word phrases an ATS would scan for (3+ words preferred).
+  GOOD: "CI/CD pipelines", "cross-functional collaboration", "data-driven decision making",
+        "RESTful API design", "agile development methodology", "production ML systems"
+  BAD: "AI", "ML", "data", "cloud", "team" — these are too generic and match everything.
+  Always prefer the specific phrase from the JD over a generic single-word version.
+  Include both the acronym and full form when both appear (e.g. "NLP", "natural language processing").
+- jd_tools: specific tool, technology, framework, and platform names mentioned in the JD
+  (e.g. "Apache Spark", "Kubernetes", "FastAPI", "dbt", "Snowflake").
+  Extract the exact names as written. Must be at least 2 characters.
+  Do NOT include generic terms like "AI", "ML", "APIs" — only named tools/products.
+- required_skills: explicitly stated as required/must-have. Use the JD's exact phrasing.
+- preferred_skills: nice-to-have, bonus, preferred. Use the JD's exact phrasing.
 - role_level: infer from title and requirements if not stated
 """
 
@@ -82,21 +90,35 @@ STAGE2_PROMPT = """Analyze this job description:
 
 
 STAGE3_SYSTEM = """You are a professional resume writer specializing in tailoring resumes for job applications.
-Your task: rewrite resume bullets to better match a job description.
+Your task: rewrite resume bullets so they mirror the language and priorities of a specific job description.
+
+WHAT GOOD TAILORING LOOKS LIKE:
+Good tailoring restructures the bullet to lead with what the JD cares about, using the JD's own phrasing.
+It does NOT just insert a keyword into the original sentence.
+
+EXAMPLE — JD emphasizes "production ML systems" and "model monitoring":
+  Original: "Built an LLM evaluation pipeline with LLM-as-judge methodology"
+  BAD:      "Built an AI LLM evaluation pipeline with LLM-as-judge methodology" ← just inserted "AI", lazy
+  GOOD:     "Developed a production ML evaluation system using LLM-as-judge methodology, enabling continuous model monitoring across output quality dimensions" ← restructured to lead with JD language
+
+EXAMPLE — JD emphasizes "cross-functional collaboration" and "stakeholder communication":
+  Original: "Worked with designers and PMs to ship a new onboarding flow"
+  BAD:      "Worked with cross-functional designers and PMs to ship a new onboarding flow" ← awkward insertion
+  GOOD:     "Led cross-functional collaboration with design and product stakeholders to ship a new onboarding flow, improving activation rates" ← natural restructure
 
 RULES:
 1. NEVER invent metrics, companies, or achievements not in the original bullet
 2. NEVER add specific numbers/percentages unless they were in the original
 3. NEVER change the fundamental activity or achievement described
-4. DO: reorder words, use stronger action verbs, incorporate JD keywords naturally
-5. DO: surface implicit skills (if they "built a dashboard" you can say "developed")
-6. DO: quantify vaguely if the original implies it ("improved" -> "improved performance")
-7. TOOL/TECH INJECTION (important): You are explicitly allowed to inject tool and technology names
-   from the provided `jd_tools` list into bullets where the activity domain clearly matches.
-   For example, if a bullet says "built data pipelines" and the JD lists "Apache Spark", you may
-   rewrite as "built data pipelines using Apache Spark". Use judgment — only inject where plausible.
-   Mark any injected tool in the `injected_keywords` list so the user can verify them.
-8. If a bullet cannot be improved, return it unchanged
+4. RESTRUCTURE the sentence to lead with what the JD prioritizes — don't just insert keywords
+5. Use the JD's exact multi-word phrases where they fit naturally (e.g., "production ML systems" not just "ML")
+6. Surface implicit skills — if they "built a dashboard" and the JD wants "data visualization", say "developed a data visualization dashboard"
+7. Strengthen action verbs to match the JD's seniority level
+8. TOOL/TECH INJECTION: You may inject specific tool names from `jd_tools` where the activity domain clearly matches.
+   Mark injected tools in `injected_keywords`. Only inject named tools (e.g., "Kubernetes", "Airflow"), never generic terms.
+9. If a bullet already uses JD language well, or cannot be meaningfully improved, return it UNCHANGED.
+   Do NOT force changes. Returning unchanged is better than making a lazy insertion.
+10. Each keyword should appear in at most 2-3 bullets across the whole resume — don't repeat the same keyword everywhere.
 
 Return ONLY valid JSON:
 {
@@ -112,20 +134,25 @@ Return ONLY valid JSON:
   ]
 }
 
-`keywords_added`: JD keywords that were already implied by the original and surfaced naturally.
-`injected_keywords`: tool/tech names from `jd_tools` that were NOT in the original and were added by you.
+`keywords_added`: specific JD phrases (multi-word preferred) that were already implied by the original and surfaced naturally.
+`injected_keywords`: specific tool/tech names from `jd_tools` that were NOT in the original and were added.
+Do NOT put generic single words like "AI", "ML", "data" in either list — only specific phrases or named tools.
 """
 
 STAGE3_PROMPT = """Job Description Keywords and Requirements:
 {jd_analysis}
 
-JD Tools (you may inject these into matching bullets):
+JD Tools (you may inject specific named tools into matching bullets):
 {jd_tools}
 
-Resume Bullets to Tailor:
+Resume Bullets to Tailor (each bullet includes its section context):
 {bullets_json}
 
-Rewrite each bullet to better match the job requirements. Return JSON only."""
+For each bullet:
+1. Identify which JD requirements this bullet could address
+2. Restructure the sentence to lead with JD-relevant language
+3. If the bullet already matches well or can't be improved, return it unchanged
+Return JSON only."""
 
 
 STAGE4_SYSTEM = """You are a hallucination detection specialist for resume content.

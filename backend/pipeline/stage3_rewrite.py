@@ -11,12 +11,23 @@ def rewrite_bullets(resume_structured: dict, jd_analysis: dict) -> dict:
     """
     model = select_model(3)
 
-    # Flatten all bullets from resume
+    # Flatten bullets WITH section/role context so the model knows what each bullet is about
     bullets = []
     for section in resume_structured.get("sections", []):
+        section_title = section.get("title", "")
+        section_type = section.get("type", "other")
         for entry in section.get("entries", []):
+            role = entry.get("role", "")
+            company = entry.get("company", "")
             for bullet in entry.get("bullets", []):
-                bullets.append(bullet)
+                bullets.append({
+                    "bullet_id": bullet["bullet_id"],
+                    "text": bullet["text"],
+                    "section": section_title,
+                    "section_type": section_type,
+                    "role": role,
+                    "company": company,
+                })
 
     if not bullets:
         return {"rewrites": []}

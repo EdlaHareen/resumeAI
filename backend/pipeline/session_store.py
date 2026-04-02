@@ -25,24 +25,33 @@ class InMemorySessionStore(SessionStore):
     def __init__(self) -> None:
         self._sessions: Dict[str, Dict[str, Any]] = {}
         self._lock = threading.Lock()
+        self._last_evict: float = 0.0
+        self._evict_interval: float = 60.0  # scan at most once per minute
 
-    def _evict_expired(self) -> None:
+    def _maybe_evict_expired(self) -> None:
+        """Periodic bulk eviction — runs at most once per _evict_interval."""
         now = time.time()
+        if now - self._last_evict < self._evict_interval:
+            return
+        self._last_evict = now
         expired = [sid for sid, s in self._sessions.items() if s["expires_at"] < now]
         for sid in expired:
             del self._sessions[sid]
 
     def get(self, session_id: str) -> Dict[str, Any]:
         with self._lock:
-            self._evict_expired()
             session = self._sessions.get(session_id)
             if session is None:
+                raise KeyError(f"Session {session_id} not found or expired")
+            # Lazy eviction: only check this specific session
+            if session["expires_at"] < time.time():
+                del self._sessions[session_id]
                 raise KeyError(f"Session {session_id} not found or expired")
             return session["data"]
 
     def set(self, session_id: str, data: Dict[str, Any], ttl_seconds: int) -> None:
         with self._lock:
-            self._evict_expired()
+            self._maybe_evict_expired()
             self._sessions[session_id] = {
                 "data": data,
                 "expires_at": time.time() + ttl_seconds,

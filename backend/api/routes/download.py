@@ -20,7 +20,7 @@ router = APIRouter()
 
 def _get_session_data(session_id: str, requesting_user_id: str | None = None) -> dict:
     """Try Redis first, fall back to Supabase. Raises HTTPException if not found anywhere.
-    If requesting_user_id is provided, asserts the session belongs to that user.
+    Ownership check: if the session has an owner, the requester must match.
     """
     try:
         data = get_session(session_id)
@@ -37,10 +37,12 @@ def _get_session_data(session_id: str, requesting_user_id: str | None = None) ->
             detail="Session not found. Please re-upload your resume.",
         )
 
-    # Ownership check: if both sides have a user_id, they must match
+    # Ownership check: if the session has an owner, the requester must provide
+    # a matching user_id. This prevents IDOR where omitting user_id bypasses the check.
     session_owner = data.get("user_id")
-    if requesting_user_id and session_owner and session_owner != requesting_user_id:
-        raise HTTPException(status_code=403, detail="Access denied.")
+    if session_owner:
+        if not requesting_user_id or requesting_user_id != session_owner:
+            raise HTTPException(status_code=403, detail="Access denied.")
 
     return data
 

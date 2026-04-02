@@ -273,10 +273,10 @@ async def payment_callback(
 
 @router.get("/razorpay/subscription/{user_id}")
 async def get_subscription(user_id: str, authorization: Optional[str] = Header(None)):
-    """Return tier + usage for the authenticated user only."""
+    """Return tier + usage for the authenticated user only. Admins always get pro."""
     if not authorization:
         raise HTTPException(status_code=401, detail="Authorization header required.")
-    verified_user_id = await asyncio.to_thread(auth_utils.verify_token, authorization)
-    if verified_user_id != user_id:
+    verified = await asyncio.to_thread(auth_utils.verify_token_full, authorization)
+    if verified.user_id != user_id:
         raise HTTPException(status_code=403, detail="Access denied.")
-    return sub_store.get_subscription_info(user_id)
+    return sub_store.get_subscription_info(user_id, is_admin=verified.is_admin)

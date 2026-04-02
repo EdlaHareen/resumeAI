@@ -7,14 +7,24 @@ function highlightKeywords(
   keywords: string[],
   injectedKeywords?: string[],
 ): React.ReactNode {
-  const all = [...keywords, ...(injectedKeywords ?? [])];
+  // Filter out keywords that are too short (< 3 chars) to avoid matching inside words
+  // e.g., "AI" matching inside "maintaining", "daily"
+  const minLen = 3;
+  const filteredKeywords = keywords.filter((k) => k.length >= minLen);
+  const filteredInjected = (injectedKeywords ?? []).filter((k) => k.length >= minLen);
+  const all = [...filteredKeywords, ...filteredInjected];
   if (!all.length) return text;
-  const escaped = all.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  const pattern = new RegExp(`(${escaped.join("|")})`, "gi");
+
+  // Sort by length descending so longer phrases match first (e.g., "AI solutions" before "solutions")
+  const sorted = [...all].sort((a, b) => b.length - a.length);
+  const escaped = sorted.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  // Use word boundaries to prevent matching inside other words
+  const pattern = new RegExp(`\\b(${escaped.join("|")})\\b`, "gi");
   const parts = text.split(pattern);
+
   return parts.map((part, i) => {
-    const isInjected = (injectedKeywords ?? []).some((k) => k.toLowerCase() === part.toLowerCase());
-    const isKeyword = !isInjected && keywords.some((k) => k.toLowerCase() === part.toLowerCase());
+    const isInjected = filteredInjected.some((k) => k.toLowerCase() === part.toLowerCase());
+    const isKeyword = !isInjected && filteredKeywords.some((k) => k.toLowerCase() === part.toLowerCase());
     if (isInjected) {
       return (
         <mark
@@ -77,7 +87,7 @@ export function BulletRow({ diff, state, onChange }: Props) {
   const accentColor = chosen === "accept"
     ? "rgba(204,255,0,0.4)"
     : chosen === "edit"
-    ? "rgba(99,102,241,0.4)"
+    ? "rgba(204,255,0,0.25)"
     : "rgba(255,255,255,0.1)";
 
   return (
@@ -285,9 +295,9 @@ export function BulletRow({ diff, state, onChange }: Props) {
               display: "flex", alignItems: "center", gap: "0.3rem",
               padding: "0.35rem 0.75rem",
               borderRadius: 9999,
-              border: `1px solid ${chosen === "edit" ? "rgba(99,102,241,0.5)" : "rgba(255,255,255,0.07)"}`,
-              background: chosen === "edit" ? "rgba(99,102,241,0.12)" : "transparent",
-              color: chosen === "edit" ? "#818cf8" : "var(--text-tertiary)",
+              border: `1px solid ${chosen === "edit" ? "rgba(204,255,0,0.4)" : "rgba(255,255,255,0.07)"}`,
+              background: chosen === "edit" ? "rgba(204,255,0,0.08)" : "transparent",
+              color: chosen === "edit" ? "var(--accent)" : "var(--text-tertiary)",
               fontSize: 12, fontWeight: 600, cursor: "pointer",
               fontFamily: "'Space Grotesk', sans-serif",
               transition: "all 0.15s",

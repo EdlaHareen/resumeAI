@@ -85,7 +85,7 @@ export function FeedbackFAB() {
             border: "none",
             cursor: "pointer",
             background: "var(--accent)",
-            boxShadow: "0 4px 20px rgba(10,132,255,0.35), 0 4px 12px rgba(0,0,0,0.3)",
+            boxShadow: "0 4px 20px rgba(204,255,0,0.35), 0 4px 12px rgba(0,0,0,0.3)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
